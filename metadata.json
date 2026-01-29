@@ -1,0 +1,7 @@
+{
+  "name": "HUD + Superhero AR Filter",
+  "description": "A real-time Iron Man style Augmented Reality HUD that tracks face landmarks using MediaPipe and renders 3D visualizations.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

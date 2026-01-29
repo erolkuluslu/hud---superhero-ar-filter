@@ -1,0 +1,1 @@
+cd /Users/erolkuluslu/bilisim-akademesi/hud-+-superhero-ar-filter && npm run dev
