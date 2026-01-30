@@ -97,5 +97,5 @@ When the app opens, your browser will ask for **Camera Permission**. Click **All
 ---
 
 <div align="center">
-  <sub>Built with ❤️ by Bilişim Akademisi</sub>
+  <sub>Built by Erol Külüşlü</sub>
 </div>
