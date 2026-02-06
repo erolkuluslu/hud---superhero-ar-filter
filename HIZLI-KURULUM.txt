@@ -1,0 +1,68 @@
+================================
+WINDOWS OTOMATIK BAŞLATMA
+Hızlı Kurulum (5 Dakika)
+================================
+
+1️⃣ ADIM 1: Dosyaları Kopyala
+   - Bu klasörü masaüstüne veya kolay bulabileceğin yere kopyala
+   - Örnek: C:\PenceOyunu
+
+2️⃣ ADIM 2: Node.js Kur (Yoksa)
+   - https://nodejs.org adresine git
+   - "LTS" sürümünü indir ve kur
+   - Bilgisayarı yeniden başlat
+
+3️⃣ ADIM 3: Bağımlılıkları Yükle
+   - Bu klasörde sağ tıkla → "Open in Terminal" veya "Git Bash Here"
+   - Şunu yaz: npm install
+   - Enter'a bas ve bekle
+
+4️⃣ ADIM 4: Test Et
+   - start-game.bat dosyasına çift tıkla
+   - Tarayıcıda oyun açılmalı
+   - Çalışıyorsa devam et ↓
+
+5️⃣ ADIM 5: Otomatik Başlatmayı Aktif Et
+
+   Kolay Yöntem (Önerilen):
+   ----------------------
+   a) Win + R tuşlarına bas
+   b) Yaz: shell:startup
+   c) Enter
+   d) start-game-silent.vbs dosyasına SAĞ TIKLA
+   e) "Kısayol oluştur" seç
+   f) Kısayolu açılan Startup klasörüne TAŞI
+   g) BİTTİ!
+
+6️⃣ ADIM 6: Test
+   - Bilgisayarı yeniden başlat
+   - 10-15 saniye bekle
+   - Oyun otomatik açılacak 🎮
+
+================================
+
+❌ ÇALIŞMIYORSA:
+
+1. Node.js kurulu mu?
+   Terminal aç, yaz: node --version
+
+2. Bağımlılıklar yüklü mü?
+   Terminal aç, yaz: npm install
+
+3. Port kullanımda mı?
+   Terminal aç, yaz: netstat -ano | findstr :3000
+
+4. Detaylı kurulum için:
+   WINDOWS-OTOMASYON.md dosyasını oku
+
+================================
+
+💡 İPUÇLARI:
+
+- Oyunu kapatmak: Task Manager → node.exe → End Task
+- Otomasyonu kapat: Win+R → shell:startup → Kısayolu sil
+- Sorun varsa: start-game.bat çalıştır (hataları gösterir)
+
+================================
+
+✅ Başarılar! 🚀
