@@ -18,19 +18,47 @@ const HAND_CONNECTIONS = [
   [5, 9], [9, 13], [13, 17]              // Palm
 ];
 
+// Alien sizes and points configuration - grab uses 2D distance (X-Y only)
+const ALIEN_SIZES = {
+  normal: { scale: 1.0, bodyRadius: 0.35, bodyHeight: 0.4, points: 100, grabRadius: 1.0 },
+  small: { scale: 0.7, bodyRadius: 0.25, bodyHeight: 0.28, points: 200, grabRadius: 0.8 }
+} as const;
+
+// Spawn configuration - all aliens spawn on Z=0 plane (same as hand)
+const MIN_ALIEN_DISTANCE = 1.8;
+// Minimum distance from portal center
+const MIN_PORTAL_DISTANCE = 2.5;
+// Hand reach limits (based on transformLandmark: X=-5 to +5, Y=-3 to +3)
+const MAX_X_SPAWN = 3.8;  // Leave margin from edge
+const MAX_Y_SPAWN = 2.2;
+const MIN_Y_SPAWN = -2.0;
+
+type AlienSize = keyof typeof ALIEN_SIZES;
+
+// Extended color palette
+const ALIEN_COLORS = [
+  '#22c55e', '#84cc16', '#10b981', '#14b8a6', '#06b6d4', // Greens & Cyans
+  '#facc15', '#f97316', '#ef4444', '#ec4899', '#a855f7', // Warm & Pink
+  '#6366f1', '#3b82f6', '#0ea5e9', '#8b5cf6', '#d946ef'  // Blues & Purples
+];
+
 // Alien component - a cute 3D alien that follows hand when grabbed
-const Alien = React.forwardRef<THREE.Group, { 
-  position: [number, number, number], 
-  id: number, 
+const Alien = React.forwardRef<THREE.Group, {
+  position: [number, number, number],
+  id: number,
   isGrabbed: boolean,
   grabbedPosition: THREE.Vector3 | null,
   color: string,
-  isNearHand: boolean
-}>(({ position, id, isGrabbed, grabbedPosition, color, isNearHand }, ref) => {
+  isNearHand: boolean,
+  size: AlienSize
+}>(({ position, id, isGrabbed, grabbedPosition, color, isNearHand, size = 'normal' }, ref) => {
   const meshRef = useRef<THREE.Group>(null);
   const bobOffset = useMemo(() => Math.random() * Math.PI * 2, []);
   const basePosition = useRef(new THREE.Vector3(...position));
   const ringRef = useRef<THREE.Mesh>(null);
+
+  // Get size configuration
+  const sizeConfig = ALIEN_SIZES[size];
 
   useFrame((state) => {
     if (!meshRef.current) return;
@@ -63,62 +91,62 @@ const Alien = React.forwardRef<THREE.Group, {
     <group ref={meshRef} position={position}>
       {/* LARGE visible grab zone - always visible */}
       <mesh ref={ringRef} rotation={[0, 0, 0]} position={[0, 0, 0]}>
-        <torusGeometry args={[0.8, 0.03, 8, 32]} />
-        <meshBasicMaterial 
-          color={isNearHand ? "#fbbf24" : "#00ff00"} 
-          transparent 
-          opacity={isNearHand ? 1 : 0.4} 
+        <torusGeometry args={[sizeConfig.grabRadius, 0.03 * sizeConfig.scale, 8, 32]} />
+        <meshBasicMaterial
+          color={isNearHand ? "#fbbf24" : "#00ff00"}
+          transparent
+          opacity={isNearHand ? 1 : 0.4}
         />
       </mesh>
-      
+
       {/* Dashed circle showing grab area */}
       <mesh rotation={[Math.PI/2, 0, 0]} position={[0, 0, 0]}>
-        <ringGeometry args={[0.75, 0.85, 32]} />
-        <meshBasicMaterial 
-          color={isNearHand ? "#fbbf24" : "#00ff00"} 
-          transparent 
+        <ringGeometry args={[sizeConfig.grabRadius * 0.9, sizeConfig.grabRadius * 1.05, 32]} />
+        <meshBasicMaterial
+          color={isNearHand ? "#fbbf24" : "#00ff00"}
+          transparent
           opacity={isNearHand ? 0.6 : 0.2}
           side={THREE.DoubleSide}
         />
       </mesh>
-      
-      {/* Body - MUCH bigger for easier grabbing */}
+
+      {/* Body - size based on alien type */}
       <mesh>
-        <capsuleGeometry args={[0.35, 0.4, 8, 16]} />
-        <meshStandardMaterial 
-          color={color} 
-          emissive={color} 
-          emissiveIntensity={isGrabbed ? 1 : (isNearHand ? 0.6 : 0.3)} 
+        <capsuleGeometry args={[sizeConfig.bodyRadius, sizeConfig.bodyHeight, 8, 16]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={isGrabbed ? 1 : (isNearHand ? 0.6 : 0.3)}
         />
       </mesh>
       
       {/* Left Eye */}
-      <mesh position={[-0.15, 0.2, 0.28]}>
-        <sphereGeometry args={[0.1, 16, 16]} />
+      <mesh position={[-0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.28 * sizeConfig.scale]}>
+        <sphereGeometry args={[0.1 * sizeConfig.scale, 16, 16]} />
         <meshStandardMaterial color="white" />
       </mesh>
-      <mesh position={[-0.15, 0.2, 0.36]}>
-        <sphereGeometry args={[0.05, 16, 16]} />
+      <mesh position={[-0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.36 * sizeConfig.scale]}>
+        <sphereGeometry args={[0.05 * sizeConfig.scale, 16, 16]} />
         <meshStandardMaterial color="black" />
       </mesh>
-      
+
       {/* Right Eye */}
-      <mesh position={[0.15, 0.2, 0.28]}>
-        <sphereGeometry args={[0.1, 16, 16]} />
+      <mesh position={[0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.28 * sizeConfig.scale]}>
+        <sphereGeometry args={[0.1 * sizeConfig.scale, 16, 16]} />
         <meshStandardMaterial color="white" />
       </mesh>
-      <mesh position={[0.15, 0.2, 0.36]}>
-        <sphereGeometry args={[0.05, 16, 16]} />
+      <mesh position={[0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.36 * sizeConfig.scale]}>
+        <sphereGeometry args={[0.05 * sizeConfig.scale, 16, 16]} />
         <meshStandardMaterial color="black" />
       </mesh>
-      
+
       {/* Antenna */}
-      <mesh position={[0, 0.55, 0]}>
-        <cylinderGeometry args={[0.03, 0.03, 0.25, 8]} />
+      <mesh position={[0, 0.55 * sizeConfig.scale, 0]}>
+        <cylinderGeometry args={[0.03 * sizeConfig.scale, 0.03 * sizeConfig.scale, 0.25 * sizeConfig.scale, 8]} />
         <meshStandardMaterial color={color} />
       </mesh>
-      <mesh position={[0, 0.72, 0]}>
-        <sphereGeometry args={[0.07, 16, 16]} />
+      <mesh position={[0, 0.72 * sizeConfig.scale, 0]}>
+        <sphereGeometry args={[0.07 * sizeConfig.scale, 16, 16]} />
         <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={1} />
       </mesh>
       
@@ -131,96 +159,282 @@ const Alien = React.forwardRef<THREE.Group, {
       {isGrabbed && (
         <>
           <mesh rotation={[Math.PI/2, 0, 0]} position={[0, 0, 0]}>
-            <ringGeometry args={[0.5, 0.6, 32]} />
+            <ringGeometry args={[0.5 * sizeConfig.scale, 0.6 * sizeConfig.scale, 32]} />
             <meshBasicMaterial color="#fbbf24" transparent opacity={0.9} side={THREE.DoubleSide} />
           </mesh>
-          <pointLight position={[0, 0, 0]} color="#fbbf24" intensity={5} distance={3} />
+          <pointLight position={[0, 0, 0]} color="#fbbf24" intensity={5 * sizeConfig.scale} distance={3 * sizeConfig.scale} />
         </>
       )}
     </group>
   );
 });
 
-// The Hole/Portal component - HUGE and CENTERED
-const Hole = ({ position, isNearHand }: { position: [number, number, number], isNearHand: boolean }) => {
-  const ringRef = useRef<THREE.Mesh>(null);
-  const outerRingRef = useRef<THREE.Mesh>(null);
-  
-  useFrame((state) => {
-    if (ringRef.current) {
-      ringRef.current.rotation.z = state.clock.elapsedTime * 0.5;
-    }
-    if (outerRingRef.current) {
-      outerRingRef.current.rotation.z = -state.clock.elapsedTime * 0.3;
-      // Pulse effect
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 3) * 0.05;
-      outerRingRef.current.scale.set(scale, scale, 1);
+// Falling alien animation component
+const FallingAlien = ({
+  color,
+  size,
+  startPosition,
+  onComplete
+}: {
+  color: string,
+  size: AlienSize,
+  startPosition: THREE.Vector3,
+  onComplete: () => void
+}) => {
+  const meshRef = useRef<THREE.Group>(null);
+  const progress = useRef(0);
+  const sizeConfig = ALIEN_SIZES[size];
+
+  useFrame((state, delta) => {
+    if (!meshRef.current) return;
+
+    progress.current += delta * 2.5;
+
+    // Spiral down animation - tighter spiral for smaller portal
+    const t = progress.current;
+    const radius = Math.max(0, 0.8 - t * 0.6);
+    meshRef.current.position.x = Math.cos(t * 10) * radius;
+    meshRef.current.position.z = Math.sin(t * 10) * radius;
+    meshRef.current.position.y = -t * 4;
+
+    // Spin and shrink
+    meshRef.current.rotation.y += delta * 15;
+    meshRef.current.rotation.x += delta * 10;
+    const shrinkScale = Math.max(0.1, 1 - t * 0.6);
+    meshRef.current.scale.setScalar(shrinkScale * sizeConfig.scale);
+
+    // Remove after animation
+    if (progress.current > 1.5) {
+      onComplete();
     }
   });
 
   return (
-    <group position={position}>
-      {/* HUGE Hole base */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1.5, 32]} />
+    <group ref={meshRef} position={[startPosition.x, 0, startPosition.z]}>
+      <mesh>
+        <capsuleGeometry args={[sizeConfig.bodyRadius, sizeConfig.bodyHeight, 8, 16]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1} />
+      </mesh>
+      <pointLight color={color} intensity={3} distance={2} />
+    </group>
+  );
+};
+
+// Enhanced Portal component with beautiful effects
+const Portal = ({
+  position,
+  isNearHand,
+  fallingAliens,
+  onFallComplete
+}: {
+  position: [number, number, number],
+  isNearHand: boolean,
+  fallingAliens: Array<{ id: number, color: string, size: AlienSize, position: THREE.Vector3 }>,
+  onFallComplete: (id: number) => void
+}) => {
+  const portalRef = useRef<THREE.Group>(null);
+  const ring1Ref = useRef<THREE.Mesh>(null);
+  const ring2Ref = useRef<THREE.Mesh>(null);
+  const ring3Ref = useRef<THREE.Mesh>(null);
+  const spiralRef = useRef<THREE.Group>(null);
+  const particlesRef = useRef<THREE.Points>(null);
+
+  // Create particle positions for portal effect - smaller portal
+  const particlePositions = useMemo(() => {
+    const positions = new Float32Array(40 * 3);
+    for (let i = 0; i < 40; i++) {
+      const angle = (i / 40) * Math.PI * 2;
+      const radius = 0.8 + Math.random() * 0.4;
+      positions[i * 3] = Math.cos(angle) * radius;
+      positions[i * 3 + 1] = Math.random() * 0.3;
+      positions[i * 3 + 2] = Math.sin(angle) * radius;
+    }
+    return positions;
+  }, []);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+
+    // Rotate rings in different directions
+    if (ring1Ref.current) {
+      ring1Ref.current.rotation.z = t * 0.8;
+    }
+    if (ring2Ref.current) {
+      ring2Ref.current.rotation.z = -t * 0.5;
+      const pulse = 1 + Math.sin(t * 3) * 0.08;
+      ring2Ref.current.scale.set(pulse, pulse, 1);
+    }
+    if (ring3Ref.current) {
+      ring3Ref.current.rotation.z = t * 1.2;
+    }
+
+    // Animate spiral
+    if (spiralRef.current) {
+      spiralRef.current.rotation.y = t * 2;
+    }
+
+    // Animate particles - smaller radius
+    if (particlesRef.current) {
+      const positions = particlesRef.current.geometry.attributes.position.array as Float32Array;
+      for (let i = 0; i < 40; i++) {
+        const baseAngle = (i / 40) * Math.PI * 2;
+        const angle = baseAngle + t * 0.5;
+        const radius = 0.8 + Math.sin(t * 2 + i) * 0.2;
+        positions[i * 3] = Math.cos(angle) * radius;
+        positions[i * 3 + 1] = Math.sin(t * 3 + i * 0.5) * 0.2 + 0.15;
+        positions[i * 3 + 2] = Math.sin(angle) * radius;
+      }
+      particlesRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+  });
+
+  const activeColor = isNearHand ? "#fbbf24" : "#8b5cf6";
+  const secondaryColor = isNearHand ? "#f97316" : "#06b6d4";
+
+  return (
+    <group ref={portalRef} position={position}>
+      {/* Deep black hole center - SMALLER */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+        <circleGeometry args={[1.2, 64]} />
         <meshStandardMaterial color="#000" />
       </mesh>
-      
-      {/* Outer pulsing ring */}
-      <mesh ref={outerRingRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <ringGeometry args={[1.4, 1.8, 32]} />
-        <meshBasicMaterial 
-          color={isNearHand ? "#fbbf24" : "#22c55e"} 
-          transparent 
-          opacity={isNearHand ? 0.9 : 0.4} 
+
+      {/* Gradient void */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <circleGeometry args={[1.0, 64]} />
+        <meshStandardMaterial
+          color="#1a0a2e"
+          emissive="#4c1d95"
+          emissiveIntensity={0.5}
         />
       </mesh>
-      
-      {/* Glowing ring */}
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-        <ringGeometry args={[1.2, 1.5, 32]} />
-        <meshStandardMaterial 
-          color={isNearHand ? "#fbbf24" : "#22c55e"} 
-          emissive={isNearHand ? "#fbbf24" : "#22c55e"} 
-          emissiveIntensity={isNearHand ? 2 : 1.5} 
-          transparent 
-          opacity={0.9} 
+
+      {/* Inner swirl effect */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+        <ringGeometry args={[0.2, 0.8, 64]} />
+        <meshStandardMaterial
+          color="#7c3aed"
+          emissive="#7c3aed"
+          emissiveIntensity={isNearHand ? 1.5 : 0.8}
+          transparent
+          opacity={0.7}
         />
       </mesh>
-      
-      {/* Inner glow */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
-        <ringGeometry args={[0.8, 1.2, 32]} />
-        <meshStandardMaterial color="#4ade80" emissive="#4ade80" emissiveIntensity={0.8} transparent opacity={0.6} />
+
+      {/* Outer ring 1 - main glow */}
+      <mesh ref={ring1Ref} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[1.0, 1.2, 64]} />
+        <meshStandardMaterial
+          color={activeColor}
+          emissive={activeColor}
+          emissiveIntensity={isNearHand ? 2.5 : 1.5}
+          transparent
+          opacity={0.9}
+        />
       </mesh>
-      
-      {/* Center glow */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
-        <circleGeometry args={[0.8, 32]} />
-        <meshStandardMaterial color="#000" emissive="#22c55e" emissiveIntensity={0.3} />
+
+      {/* Outer ring 2 - pulsing */}
+      <mesh ref={ring2Ref} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+        <ringGeometry args={[1.2, 1.4, 64]} />
+        <meshBasicMaterial
+          color={secondaryColor}
+          transparent
+          opacity={isNearHand ? 0.8 : 0.4}
+        />
       </mesh>
-      
-      {/* "DROP HERE" indicator - 4 corners */}
-      {[0, 90, 180, 270].map((angle, i) => (
-        <group key={i}>
-          {/* Arrow pointing inward */}
-          <mesh rotation={[-Math.PI / 2, 0, (angle * Math.PI) / 180 + Math.PI]} position={[
-            Math.cos((angle * Math.PI) / 180) * 2,
-            0.1,
-            Math.sin((angle * Math.PI) / 180) * 2
-          ]}>
-            <coneGeometry args={[0.15, 0.4, 4]} />
-            <meshStandardMaterial 
-              color={isNearHand ? "#fbbf24" : "#22c55e"} 
-              emissive={isNearHand ? "#fbbf24" : "#22c55e"} 
-              emissiveIntensity={1} 
+
+      {/* Outer ring 3 - thin accent */}
+      <mesh ref={ring3Ref} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+        <ringGeometry args={[1.4, 1.5, 32]} />
+        <meshBasicMaterial
+          color={activeColor}
+          transparent
+          opacity={0.6}
+        />
+      </mesh>
+
+      {/* Spiral arms - smaller */}
+      <group ref={spiralRef}>
+        {[0, 120, 240].map((angle, i) => (
+          <mesh
+            key={i}
+            rotation={[-Math.PI / 2, 0, (angle * Math.PI) / 180]}
+            position={[0, 0.05, 0]}
+          >
+            <ringGeometry args={[0.3, 0.9, 3, 1, 0, Math.PI * 0.6]} />
+            <meshBasicMaterial
+              color={i % 2 === 0 ? activeColor : secondaryColor}
+              transparent
+              opacity={0.5}
+              side={THREE.DoubleSide}
             />
           </mesh>
-        </group>
+        ))}
+      </group>
+
+      {/* Floating particles */}
+      <points ref={particlesRef}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={40}
+            array={particlePositions}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <pointsMaterial
+          size={0.08}
+          color={activeColor}
+          transparent
+          opacity={0.8}
+          sizeAttenuation={true}
+        />
+      </points>
+
+      {/* Energy beams pointing inward - closer to portal */}
+      {[0, 90, 180, 270].map((angle, i) => (
+        <mesh
+          key={i}
+          rotation={[-Math.PI / 2, 0, (angle * Math.PI) / 180]}
+          position={[
+            Math.cos((angle * Math.PI) / 180) * 1.7,
+            0.1,
+            Math.sin((angle * Math.PI) / 180) * 1.7
+          ]}
+        >
+          <coneGeometry args={[0.1, 0.35, 4]} />
+          <meshStandardMaterial
+            color={i % 2 === 0 ? activeColor : secondaryColor}
+            emissive={i % 2 === 0 ? activeColor : secondaryColor}
+            emissiveIntensity={1.5}
+          />
+        </mesh>
       ))}
-      
-      {/* Strong pulsing light */}
-      <pointLight position={[0, 1, 0]} color={isNearHand ? "#fbbf24" : "#22c55e"} intensity={isNearHand ? 8 : 4} distance={4} />
+
+      {/* Central light */}
+      <pointLight
+        position={[0, 1, 0]}
+        color={activeColor}
+        intensity={isNearHand ? 10 : 5}
+        distance={5}
+      />
+      <pointLight
+        position={[0, -0.5, 0]}
+        color="#7c3aed"
+        intensity={3}
+        distance={3}
+      />
+
+      {/* Falling aliens */}
+      {fallingAliens.map(alien => (
+        <FallingAlien
+          key={alien.id}
+          color={alien.color}
+          size={alien.size}
+          startPosition={alien.position}
+          onComplete={() => onFallComplete(alien.id)}
+        />
+      ))}
     </group>
   );
 };
@@ -427,41 +641,94 @@ const GameScene = ({
   gameActive: boolean
 }) => {
   const { size, viewport } = useThree();
-  const [aliens, setAliens] = useState<Array<{ 
-    id: number, 
-    position: [number, number, number], 
+  const [aliens, setAliens] = useState<Array<{
+    id: number,
+    position: [number, number, number],
     grabbed: boolean,
-    color: string 
+    color: string,
+    size: AlienSize,
+    points: number
   }>>([]);
   const [pinchPosition, setPinchPosition] = useState<THREE.Vector3 | null>(null);
   const [isPinching, setIsPinching] = useState(false);
   const [grabbedAlienId, setGrabbedAlienId] = useState<number | null>(null);
   const [nearAlienId, setNearAlienId] = useState<number | null>(null);
   const [isNearHole, setIsNearHole] = useState(false);
+  const [fallingAliens, setFallingAliens] = useState<Array<{
+    id: number,
+    color: string,
+    size: AlienSize,
+    position: THREE.Vector3
+  }>>([]);
   const alienRefs = useRef<Map<number, THREE.Group>>(new Map());
-  // HOLE IN THE CENTER-BOTTOM - easily reachable!
+  // HOLE IN THE CENTER - smaller portal
   const holePosition: [number, number, number] = [0, 0, 0];
-  const holeRadius = 1.5;
+  const holeRadius = 1.2;
 
-  // Initialize aliens - spread around the edges, away from hole
-  useEffect(() => {
-    const colors = ['#22c55e', '#84cc16', '#10b981', '#14b8a6', '#06b6d4', '#facc15', '#f97316'];
-    // Position aliens in corners and edges - far from center hole
-    const positions: [number, number, number][] = [
-      [-2.5, 0, -1.5],   // top-left
-      [2.5, 0, -1.5],    // top-right
-      [-3, 0, 1],        // left
-      [3, 0, 1],         // right
-      [-2, 0, 2],        // bottom-left
-      [2, 0, 2],         // bottom-right
+  // Generate spawn position on X-Y plane (Z=0), within hand reach, away from portal
+  const generateSpawnPosition = (existingPositions: [number, number, number][] = []): [number, number, number] => {
+    let attempts = 0;
+    const maxAttempts = 100;
+
+    while (attempts < maxAttempts) {
+      // Random X and Y within hand reach bounds
+      const x = (Math.random() * 2 - 1) * MAX_X_SPAWN; // -MAX_X to +MAX_X
+      const y = MIN_Y_SPAWN + Math.random() * (MAX_Y_SPAWN - MIN_Y_SPAWN);
+      const z = 0; // ALL aliens on same Z plane as hand!
+
+      // Check distance from portal center (must be outside portal area)
+      const portalDist = Math.sqrt(x * x + y * y);
+      if (portalDist < MIN_PORTAL_DISTANCE) {
+        attempts++;
+        continue;
+      }
+
+      // Check distance from all existing aliens (2D distance on X-Y plane)
+      let tooClose = false;
+      for (const pos of existingPositions) {
+        const dx = x - pos[0];
+        const dy = y - pos[1];
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MIN_ALIEN_DISTANCE) {
+          tooClose = true;
+          break;
+        }
+      }
+
+      if (!tooClose) {
+        return [x, y, z];
+      }
+
+      attempts++;
+    }
+
+    // Fallback - guaranteed valid position
+    const fallbackAngle = Math.random() * Math.PI * 2;
+    const fallbackDist = MIN_PORTAL_DISTANCE + 0.5;
+    return [
+      Math.cos(fallbackAngle) * Math.min(fallbackDist, MAX_X_SPAWN),
+      Math.sin(fallbackAngle) * Math.min(fallbackDist, MAX_Y_SPAWN),
+      0
     ];
-    
-    const initialAliens = positions.map((pos, i) => ({
-      id: i,
-      position: pos,
-      grabbed: false,
-      color: colors[i % colors.length]
-    }));
+  };
+
+  // Initialize aliens - spread around in 3D space, away from hole and each other
+  useEffect(() => {
+    const positions: [number, number, number][] = [];
+    const initialAliens = Array.from({ length: 6 }, (_, i) => {
+      const isSmall = Math.random() < 0.35; // 35% chance for small alien
+      const size: AlienSize = isSmall ? 'small' : 'normal';
+      const position = generateSpawnPosition(positions);
+      positions.push(position);
+      return {
+        id: i,
+        position,
+        grabbed: false,
+        color: ALIEN_COLORS[Math.floor(Math.random() * ALIEN_COLORS.length)],
+        size,
+        points: ALIEN_SIZES[size].points
+      };
+    });
     setAliens(initialAliens);
   }, []);
 
@@ -529,14 +796,15 @@ const GameScene = ({
           if (alienRef) {
             const alienPos = new THREE.Vector3();
             alienRef.getWorldPosition(alienPos);
-            // Only consider X and Y distance (ignore Z)
+            // Use 2D distance (X-Y only) since hand and aliens are on same Z plane
             const distance = Math.sqrt(
               Math.pow(worldPos.x - alienPos.x, 2) +
               Math.pow(worldPos.y - alienPos.y, 2)
             );
-            
-            // Grab radius - need to be somewhat close (1.8 units)
-            if (distance < 1.8 && distance < closestDist) {
+
+            // Grab threshold: 1.5 for normal, 1.3 for small (easier grab)
+            const grabThreshold = alien.size === 'small' ? 1.3 : 1.5;
+            if (distance < grabThreshold && distance < closestDist) {
               closestDist = distance;
               closestAlienId = alien.id;
             }
@@ -569,28 +837,44 @@ const GameScene = ({
       if (!currentlyPinching && isPinching && grabbedAlienId !== null) {
         // Just released - check if actually INSIDE the hole
         if (holeDist < holeRadius * 1.0) {
-          // SCORED!
-          setScore(prev => prev + 100);
-          setAliens(prev => prev.filter(a => a.id !== grabbedAlienId));
-          
-          // Spawn a new alien at random edge position
-          setTimeout(() => {
-            const colors = ['#22c55e', '#84cc16', '#10b981', '#14b8a6', '#06b6d4', '#facc15', '#f97316'];
-            const spawnPositions: [number, number, number][] = [
-              [-2.5, 0, -1.5], [2.5, 0, -1.5], [-3, 0, 1], [3, 0, 1], [-2, 0, 2], [2, 0, 2]
-            ];
-            const pos = spawnPositions[Math.floor(Math.random() * spawnPositions.length)];
-            const newAlien = {
-              id: Date.now(),
-              position: pos,
-              grabbed: false,
-              color: colors[Math.floor(Math.random() * colors.length)]
-            };
-            setAliens(prev => [...prev, newAlien]);
-          }, 500);
+          // SCORED! - Get points from the grabbed alien
+          const grabbedAlien = aliens.find(a => a.id === grabbedAlienId);
+          if (grabbedAlien) {
+            const points = grabbedAlien.points;
+            setScore(prev => prev + points);
+
+            // Add to falling aliens for animation
+            setFallingAliens(prev => [...prev, {
+              id: grabbedAlien.id,
+              color: grabbedAlien.color,
+              size: grabbedAlien.size,
+              position: worldPos.clone()
+            }]);
+
+            // Remove from active aliens
+            setAliens(prev => prev.filter(a => a.id !== grabbedAlienId));
+
+            // Spawn a new alien at random 3D position after delay
+            setTimeout(() => {
+              const isSmall = Math.random() < 0.35;
+              const size: AlienSize = isSmall ? 'small' : 'normal';
+              const existingPositions = aliens
+                .filter(a => a.id !== grabbedAlienId)
+                .map(a => a.position);
+              const newAlien = {
+                id: Date.now(),
+                position: generateSpawnPosition(existingPositions),
+                grabbed: false,
+                color: ALIEN_COLORS[Math.floor(Math.random() * ALIEN_COLORS.length)],
+                size,
+                points: ALIEN_SIZES[size].points
+              };
+              setAliens(prev => [...prev, newAlien]);
+            }, 800);
+          }
         } else {
           // Dropped elsewhere
-          setAliens(prev => prev.map(a => 
+          setAliens(prev => prev.map(a =>
             a.id === grabbedAlienId ? { ...a, grabbed: false } : a
           ));
         }
@@ -621,10 +905,15 @@ const GameScene = ({
       <pointLight position={[0, 3, 0]} color="#22c55e" intensity={0.5} />
       
       <Arena />
-      <Hole position={holePosition} isNearHand={isNearHole || (grabbedAlienId !== null && isNearHole)} />
+      <Portal
+        position={holePosition}
+        isNearHand={isNearHole || (grabbedAlienId !== null && isNearHole)}
+        fallingAliens={fallingAliens}
+        onFallComplete={(id) => setFallingAliens(prev => prev.filter(a => a.id !== id))}
+      />
       
       {aliens.map(alien => (
-        <Alien 
+        <Alien
           key={alien.id}
           ref={(el) => {
             if (el) alienRefs.current.set(alien.id, el);
@@ -636,6 +925,7 @@ const GameScene = ({
           grabbedPosition={alien.grabbed ? pinchPosition : null}
           color={alien.color}
           isNearHand={nearAlienId === alien.id}
+          size={alien.size}
         />
       ))}
       
@@ -801,6 +1091,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                 <p>🚀 Uzaylıyı yeşil deliğe sürükleyin</p>
                 <p>✋ Parmakları açarak BIRAKIN</p>
                 <p>⏱️ 60 saniyede en çok puan toplayın!</p>
+                <p className="text-yellow-400">⭐ Küçük uzaylılar = 200 puan!</p>
               </div>
               <button
                 onClick={startGame}
@@ -854,7 +1145,8 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
               <div className="text-yellow-400 text-xs tracking-widest">İPUCU</div>
               <div className="text-yellow-200 text-sm">
                 👌 Parmakları birleştir = TUT<br/>
-                ✋ Parmakları aç = BIRAK
+                ✋ Parmakları aç = BIRAK<br/>
+                <span className="text-yellow-400">⭐ Küçük = 200 puan</span>
               </div>
             </div>
           </div>
