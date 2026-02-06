@@ -1004,7 +1004,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     setHandHoldProgress(0);
   }, []);
 
-  // Hand hold detection for closing instructions
+  // Hand hold detection for closing instructions and starting game
   useEffect(() => {
     if (!showInstructions || gameActive) {
       setHandHoldProgress(0);
@@ -1029,9 +1029,9 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
         setHandHoldProgress(progress);
 
         if (progress >= 100) {
-          setShowInstructions(false);
           setHandHoldProgress(0);
           handHoldStartRef.current = 0;
+          startGame(); // Oyunu başlat!
         }
       } else {
         handHoldStartRef.current = 0;
@@ -1048,7 +1048,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
         handHoldTimerRef.current = null;
       }
     };
-  }, [showInstructions, gameActive, handLandmarksRef]);
+  }, [showInstructions, gameActive, handLandmarksRef, startGame]);
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
