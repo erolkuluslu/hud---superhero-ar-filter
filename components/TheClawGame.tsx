@@ -51,7 +51,7 @@ const Alien = React.forwardRef<THREE.Group, {
   color: string,
   isNearHand: boolean,
   size: AlienSize
-}>(({ position, id, isGrabbed, grabbedPosition, color, isNearHand, size = 'normal' }, ref) => {
+}>(({ position, isGrabbed, grabbedPosition, color, isNearHand, size = 'normal' }, ref) => {
   const meshRef = useRef<THREE.Group>(null);
   const bobOffset = useMemo(() => Math.random() * Math.PI * 2, []);
   const basePosition = useRef(new THREE.Vector3(...position));
@@ -185,7 +185,7 @@ const FallingAlien = ({
   const progress = useRef(0);
   const sizeConfig = ALIEN_SIZES[size];
 
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     if (!meshRef.current) return;
 
     progress.current += delta * 2.5;
@@ -625,22 +625,15 @@ const Arena = React.memo(() => {
 });
 
 // Main game scene
-const GameScene = ({ 
-  handLandmarksRef, 
-  videoWidth, 
-  videoHeight,
-  score,
+const GameScene = ({
+  handLandmarksRef,
   setScore,
   gameActive
-}: { 
-  handLandmarksRef: React.MutableRefObject<any[]>,
-  videoWidth: number,
-  videoHeight: number,
-  score: number,
+}: {
+  handLandmarksRef: React.RefObject<any[]>,
   setScore: React.Dispatch<React.SetStateAction<number>>,
   gameActive: boolean
 }) => {
-  const { size, viewport } = useThree();
   const [aliens, setAliens] = useState<Array<{
     id: number,
     position: [number, number, number],
@@ -941,13 +934,15 @@ const GameScene = ({
 export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { isLoading, isReady, handLandmarksRef } = useFaceDetection(videoRef);
-  const [dims, setDims] = useState({ width: 640, height: 480 });
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(60);
   const [gameActive, setGameActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
+  const [handHoldProgress, setHandHoldProgress] = useState(0);
+  const handHoldTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const handHoldStartRef = useRef<number>(0);
 
   // Camera setup
   useEffect(() => {
@@ -966,10 +961,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           videoRef.current.onloadedmetadata = () => {
             if (videoRef.current) {
               videoRef.current.play();
-              setDims({
-                width: videoRef.current.videoWidth,
-                height: videoRef.current.videoHeight
-              });
             }
           };
         }
@@ -1010,7 +1001,54 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
   const restartGame = useCallback(() => {
     setGameOver(false);
     setShowInstructions(true);
+    setHandHoldProgress(0);
   }, []);
+
+  // Hand hold detection for closing instructions
+  useEffect(() => {
+    if (!showInstructions || gameActive) {
+      setHandHoldProgress(0);
+      if (handHoldTimerRef.current) {
+        clearInterval(handHoldTimerRef.current);
+        handHoldTimerRef.current = null;
+      }
+      return;
+    }
+
+    const checkHandHold = setInterval(() => {
+      const hands = handLandmarksRef.current;
+      const hasHand = hands && hands.length > 0;
+
+      if (hasHand) {
+        if (handHoldStartRef.current === 0) {
+          handHoldStartRef.current = Date.now();
+        }
+
+        const elapsed = Date.now() - handHoldStartRef.current;
+        const progress = Math.min((elapsed / 3000) * 100, 100);
+        setHandHoldProgress(progress);
+
+        if (progress >= 100) {
+          setShowInstructions(false);
+          setHandHoldProgress(0);
+          handHoldStartRef.current = 0;
+        }
+      } else {
+        handHoldStartRef.current = 0;
+        setHandHoldProgress(0);
+      }
+    }, 50);
+
+    handHoldTimerRef.current = checkHandHold;
+
+    return () => {
+      clearInterval(checkHandHold);
+      if (handHoldTimerRef.current) {
+        clearInterval(handHoldTimerRef.current);
+        handHoldTimerRef.current = null;
+      }
+    };
+  }, [showInstructions, gameActive, handLandmarksRef]);
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
@@ -1029,11 +1067,8 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
       {isReady && (
         <div className="absolute inset-0">
           <Canvas camera={{ position: [0, 0, 8], fov: 60 }} gl={{ alpha: true }}>
-            <GameScene 
+            <GameScene
               handLandmarksRef={handLandmarksRef}
-              videoWidth={dims.width}
-              videoHeight={dims.height}
-              score={score}
               setScore={setScore}
               gameActive={gameActive}
             />
@@ -1077,18 +1112,54 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
         {/* Instructions */}
         {!gameActive && !gameOver && isReady && showInstructions && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-auto overflow-y-auto">
-            <div className="bg-black/90 backdrop-blur-md border border-green-500/50 p-8 rounded-2xl text-center max-w-2xl my-8">
+            <div className="bg-black/90 backdrop-blur-md border border-green-500/50 p-8 rounded-2xl text-center max-w-2xl my-8 relative">
               <h2 className="text-3xl font-bold text-green-400 mb-3">🎮 PENÇE OYUNU</h2>
 
-              {/* About the Technology */}
-              <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-4 mb-6">
+              {/* Hand Hold Progress Indicator */}
+              {handHoldProgress > 0 && (
+                <div className="absolute top-4 right-4 flex flex-col items-center gap-2">
+                  <div className="relative w-16 h-16">
+                    <svg className="transform -rotate-90 w-16 h-16">
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="28"
+                        stroke="#22c55e"
+                        strokeWidth="4"
+                        fill="none"
+                        opacity="0.3"
+                      />
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="28"
+                        stroke="#22c55e"
+                        strokeWidth="4"
+                        fill="none"
+                        strokeDasharray={`${2 * Math.PI * 28}`}
+                        strokeDashoffset={`${2 * Math.PI * 28 * (1 - handHoldProgress / 100)}`}
+                        className="transition-all duration-100"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-green-400 font-bold text-lg">
+                        {Math.ceil(3 - (handHoldProgress / 100) * 3)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-green-400 text-xs">✋ El havada tut</p>
+                </div>
+              )}
+
+              {/* About the Game */}
+              <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-5 mb-6">
                 <p className="text-sm text-purple-200/90 leading-relaxed">
-                  <span className="font-semibold text-purple-400">🤖 Yapay Zeka Destekli AR Oyun:</span> Bu oyun,
-                  <span className="text-cyan-300"> MediaPipe Hand Tracking</span> teknolojisiyle gerçek zamanlı
-                  el takibi yaparak, <span className="text-green-300">Three.js</span> ve
-                  <span className="text-blue-300"> React Three Fiber</span> ile 3D görselleştirme sağlıyor.
-                  Kameranız üzerinden elinizi algılayıp, parmak hareketlerinizi sanal uzaylılarla
-                  etkileşime dönüştürüyor. <span className="text-yellow-300">Geleceğin oyun teknolojileri</span> bugünden deneyimleyin!
+                  <span className="font-semibold text-purple-400">✨ Yapay Zeka ile Oyun:</span> Kameranız
+                  gerçek zamanlı olarak <span className="text-cyan-300">elinizi ve parmaklarınızı</span> takip ediyor.
+                  Siz sadece elinizi hareket ettirin, <span className="text-green-300">yapay zeka</span> parmak
+                  hareketlerinizi anlıyor ve <span className="text-blue-300">3 boyutlu uzayda</span> uzaylılarla
+                  etkileşime dönüştürüyor. <span className="text-yellow-300">Dokunmatik ekrana</span> veya
+                  <span className="text-yellow-300"> fare</span>'ye gerek yok - sadece eliniz yeterli!
                 </p>
               </div>
 
@@ -1105,7 +1176,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="text-2xl">🚀</span>
-                  <span><strong>Adım 3:</strong> Ellerinizi hareket ettirerek uzaylıyı portala sürükleyin</span>
+                  <span><strong>Adım 3:</strong> Elinizi hareket ettirerek uzaylıyı portala taşıyın</span>
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="text-2xl">✋</span>
@@ -1113,7 +1184,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                 </p>
                 <p className="flex items-start gap-2 text-yellow-400">
                   <span className="text-2xl">⭐</span>
-                  <span><strong>Bonus:</strong> Küçük uzaylılar 200 puan değerinde!</span>
+                  <span><strong>İpucu:</strong> Küçük uzaylılar 200 puan! Normal uzaylılar 100 puan</span>
                 </p>
               </div>
 
@@ -1123,12 +1194,17 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                 </p>
               </div>
 
-              <button
-                onClick={startGame}
-                className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-xl font-bold rounded-lg transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(34,197,94,0.5)]"
-              >
-                🚀 OYUNU BAŞLAT
-              </button>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={startGame}
+                  className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-xl font-bold rounded-lg transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(34,197,94,0.5)]"
+                >
+                  🚀 OYUNU BAŞLAT
+                </button>
+                <p className="text-green-400/60 text-xs">
+                  💡 İpucu: Elinizi 3 saniye havada tutarak bu ekranı kapatabilirsiniz
+                </p>
+              </div>
             </div>
           </div>
         )}
