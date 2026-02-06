@@ -938,7 +938,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(60);
   const [gameActive, setGameActive] = useState(false);
-  const [gameOver, setGameOver] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [handHoldProgress, setHandHoldProgress] = useState(0);
   const handHoldTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -980,7 +979,9 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
         setTimeLeft(prev => {
           if (prev <= 1) {
             setGameActive(false);
-            setGameOver(true);
+            // Oyun bitince direkt talimatlar ekranı açılır (SÜRE DOLDU ekranı YOK)
+            setShowInstructions(true);
+            setHandHoldProgress(0);
             return 0;
           }
           return prev - 1;
@@ -994,14 +995,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     setScore(0);
     setTimeLeft(60);
     setGameActive(true);
-    setGameOver(false);
     setShowInstructions(false);
-  }, []);
-
-  const restartGame = useCallback(() => {
-    setGameOver(false);
-    setShowInstructions(true);
-    setHandHoldProgress(0);
   }, []);
 
   // Hand hold detection for closing instructions and starting game
@@ -1110,9 +1104,16 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
         </div>
 
         {/* Instructions */}
-        {!gameActive && !gameOver && isReady && showInstructions && (
+        {!gameActive && isReady && showInstructions && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-auto overflow-y-auto">
             <div className="bg-black/90 backdrop-blur-md border border-green-500/50 p-8 rounded-2xl text-center max-w-2xl my-8 relative">
+              {/* Son Skor Göster (oyun bittiyse) */}
+              {timeLeft === 0 && (
+                <div className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border border-yellow-500/50 rounded-lg p-4 mb-4">
+                  <p className="text-yellow-400 text-lg">🏆 Son Puanınız</p>
+                  <p className="text-5xl font-bold text-yellow-300">{score}</p>
+                </div>
+              )}
               <h2 className="text-3xl font-bold text-green-400 mb-3">🎮 PENÇE OYUNU</h2>
 
               {/* Hand Hold Progress Indicator */}
@@ -1209,30 +1210,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Game Over Screen */}
-        {gameOver && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
-            <div className="bg-black/80 backdrop-blur-md border border-green-500/50 p-8 rounded-2xl text-center">
-              <h2 className="text-5xl font-black text-green-400 mb-4">SÜRE DOLDU!</h2>
-              <div className="text-6xl font-mono text-green-300 mb-2">{score}</div>
-              <p className="text-green-200/70 mb-6">PUAN</p>
-              <div className="flex gap-4 justify-center">
-                <button
-                  onClick={restartGame}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg transition-all"
-                >
-                  TEKRAR OYNA
-                </button>
-                <button
-                  onClick={onBack}
-                  className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg transition-all"
-                >
-                  MENÜYE DÖN
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Hand Status Indicator */}
         <div className="absolute bottom-6 left-6">
