@@ -1,36 +1,31 @@
 PENÇE OYUNU - WINDOWS OTOMATIK BAŞLATMA
 =======================================
 
-KURULUM (Tek Seferlik)
-----------------------
+KURULUM
+-------
+1. Win + R bas → shell:startup yaz → Enter
 
-1. Bu klasörün tam yolunu kopyala
-   Örnek: C:\Users\Erol\Desktop\hud-+-superhero-ar-filter\windows-otomasyon
-
-2. Win + R bas, yaz: shell:startup
-   Enter bas (Startup klasörü açılır)
-
-3. Startup klasöründe:
+2. Açılan klasörde:
    - Sağ tıkla → Yeni → Kısayol
    - Konum: wscript.exe "TAM_YOL\baslat-sessiz.vbs"
-   - Örnek: wscript.exe "C:\Users\Erol\Desktop\hud-+-superhero-ar-filter\windows-otomasyon\baslat-sessiz.vbs"
+   - Örnek: wscript.exe "C:\Users\Erol\hud-+-superhero-ar-filter\windows-otomasyon\baslat-sessiz.vbs"
    - İsim: Pençe Oyunu
+   - Son
 
-4. Bilgisayarı yeniden başlat
+3. Bilgisayarı yeniden başlat
 
-KULLANIM
---------
-- Windows açılınca oyun 15 saniye içinde açılır
-- Oyun tarayıcıda http://localhost:3000 adresinde açılır
 
-KAPATMA
--------
-- Tarayıcıyı kapat
-- Görev Yöneticisi → node.exe → Görevi Sonlandır
+NOTLAR
+------
+- Oyun tam ekran açılır (kiosk modu)
+- Sunucu hazır olana kadar bekler, sonra açılır
+- Çıkış: Alt+F4 veya Ctrl+W
+
 
 DEVRE DIŞI BIRAKMA
 ------------------
-- Win + R → shell:startup → Kısayolu sil
+Win + R → shell:startup → Kısayolu sil
+
 
 TEST
 ----
