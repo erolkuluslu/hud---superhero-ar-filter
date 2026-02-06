@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -239,11 +239,11 @@ const Portal = ({
   const spiralRef = useRef<THREE.Group>(null);
   const particlesRef = useRef<THREE.Points>(null);
 
-  // Create particle positions for portal effect - smaller portal
+  // Create particle positions for portal effect - optimized particle count
   const particlePositions = useMemo(() => {
-    const positions = new Float32Array(40 * 3);
-    for (let i = 0; i < 40; i++) {
-      const angle = (i / 40) * Math.PI * 2;
+    const positions = new Float32Array(30 * 3); // Reduced from 40 to 30
+    for (let i = 0; i < 30; i++) {
+      const angle = (i / 30) * Math.PI * 2;
       const radius = 0.8 + Math.random() * 0.4;
       positions[i * 3] = Math.cos(angle) * radius;
       positions[i * 3 + 1] = Math.random() * 0.3;
@@ -273,11 +273,11 @@ const Portal = ({
       spiralRef.current.rotation.y = t * 2;
     }
 
-    // Animate particles - smaller radius
+    // Animate particles - optimized
     if (particlesRef.current) {
       const positions = particlesRef.current.geometry.attributes.position.array as Float32Array;
-      for (let i = 0; i < 40; i++) {
-        const baseAngle = (i / 40) * Math.PI * 2;
+      for (let i = 0; i < 30; i++) {
+        const baseAngle = (i / 30) * Math.PI * 2;
         const angle = baseAngle + t * 0.5;
         const radius = 0.8 + Math.sin(t * 2 + i) * 0.2;
         positions[i * 3] = Math.cos(angle) * radius;
@@ -377,7 +377,7 @@ const Portal = ({
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            count={40}
+            count={30}
             array={particlePositions}
             itemSize={3}
           />
@@ -603,8 +603,8 @@ const PinchIndicator = ({
   );
 };
 
-// Floor/Arena - minimal, just grid lines
-const Arena = () => {
+// Floor/Arena - minimal, just grid lines (memoized for performance)
+const Arena = React.memo(() => {
   return (
     <group>
       {/* Very subtle grid lines */}
@@ -622,7 +622,7 @@ const Arena = () => {
       ))}
     </group>
   );
-};
+});
 
 // Main game scene
 const GameScene = ({ 
@@ -732,38 +732,29 @@ const GameScene = ({
     setAliens(initialAliens);
   }, []);
 
-  // Transform hand landmarks to 3D space - MUCH WIDER RANGE
-  const transformLandmark = (lm: { x: number, y: number, z: number }) => {
-    // Simple direct mapping - hand position maps to game world
+  // Transform hand landmarks to 3D space (memoized)
+  const transformLandmark = useCallback((lm: { x: number, y: number, z: number }) => {
     const mirroredX = 1 - lm.x;
-    
-    // Map 0-1 range to wider game world range
     const wx = (mirroredX - 0.5) * 10; // -5 to +5 range
-    const wy = (0.5 - lm.y) * 6;       // -3 to +3 range  
-    const wz = 0; // Keep on same plane for easier interaction
-
+    const wy = (0.5 - lm.y) * 6;       // -3 to +3 range
+    const wz = 0; // Keep on same plane
     return new THREE.Vector3(wx, wy, wz);
-  };
+  }, []);
 
-  // Check if hand is making a pinch/grab gesture - requires deliberate pinch
-  const checkPinchGesture = (hand: any[]) => {
+  // Check if hand is making a pinch gesture (memoized)
+  const checkPinchGesture = useCallback((hand: any[]) => {
     if (!hand || hand.length < 21) return false;
-    
     const thumbTip = hand[4];
     const indexTip = hand[8];
-    
-    // Distance between thumb and index ONLY (no middle finger alternative)
     const thumbIndexDist = Math.sqrt(
       Math.pow(thumbTip.x - indexTip.x, 2) +
       Math.pow(thumbTip.y - indexTip.y, 2)
     );
-    
-    // Stricter threshold - requires deliberate pinch (0.08)
     return thumbIndexDist < 0.08;
-  };
+  }, []);
 
-  // Get pinch point (between thumb and index)
-  const getPinchPoint = (hand: any[]) => {
+  // Get pinch point (memoized)
+  const getPinchPoint = useCallback((hand: any[]) => {
     const thumbTip = hand[4];
     const indexTip = hand[8];
     return {
@@ -771,7 +762,7 @@ const GameScene = ({
       y: (thumbTip.y + indexTip.y) / 2,
       z: (thumbTip.z + indexTip.z) / 2
     };
-  };
+  }, []);
 
   useFrame(() => {
     if (!gameActive) return;
@@ -956,6 +947,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
   const [timeLeft, setTimeLeft] = useState(60);
   const [gameActive, setGameActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
 
   // Camera setup
   useEffect(() => {
@@ -1007,16 +999,18 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     }
   }, [gameActive, timeLeft]);
 
-  const startGame = () => {
+  const startGame = useCallback(() => {
     setScore(0);
     setTimeLeft(60);
     setGameActive(true);
     setGameOver(false);
-  };
+    setShowInstructions(false);
+  }, []);
 
-  const restartGame = () => {
-    startGame();
-  };
+  const restartGame = useCallback(() => {
+    setGameOver(false);
+    setShowInstructions(true);
+  }, []);
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
@@ -1081,23 +1075,59 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
         </div>
 
         {/* Instructions */}
-        {!gameActive && !gameOver && isReady && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
-            <div className="bg-black/80 backdrop-blur-md border border-green-500/50 p-8 rounded-2xl text-center max-w-md">
-              <h2 className="text-3xl font-bold text-green-400 mb-4">NASIL OYNANIR?</h2>
-              <div className="text-green-200/80 space-y-3 mb-6 text-left text-lg">
-                <p>🖐️ Elinizi kameraya gösterin</p>
-                <p>👌 Parmakları birleştirerek TUTUN</p>
-                <p>🚀 Uzaylıyı yeşil deliğe sürükleyin</p>
-                <p>✋ Parmakları açarak BIRAKIN</p>
-                <p>⏱️ 60 saniyede en çok puan toplayın!</p>
-                <p className="text-yellow-400">⭐ Küçük uzaylılar = 200 puan!</p>
+        {!gameActive && !gameOver && isReady && showInstructions && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-auto overflow-y-auto">
+            <div className="bg-black/90 backdrop-blur-md border border-green-500/50 p-8 rounded-2xl text-center max-w-2xl my-8">
+              <h2 className="text-3xl font-bold text-green-400 mb-3">🎮 PENÇE OYUNU</h2>
+
+              {/* About the Technology */}
+              <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-4 mb-6">
+                <p className="text-sm text-purple-200/90 leading-relaxed">
+                  <span className="font-semibold text-purple-400">🤖 Yapay Zeka Destekli AR Oyun:</span> Bu oyun,
+                  <span className="text-cyan-300"> MediaPipe Hand Tracking</span> teknolojisiyle gerçek zamanlı
+                  el takibi yaparak, <span className="text-green-300">Three.js</span> ve
+                  <span className="text-blue-300"> React Three Fiber</span> ile 3D görselleştirme sağlıyor.
+                  Kameranız üzerinden elinizi algılayıp, parmak hareketlerinizi sanal uzaylılarla
+                  etkileşime dönüştürüyor. <span className="text-yellow-300">Geleceğin oyun teknolojileri</span> bugünden deneyimleyin!
+                </p>
               </div>
+
+              {/* How to Play */}
+              <h3 className="text-xl font-bold text-green-300 mb-3">📋 Nasıl Oynanır?</h3>
+              <div className="text-green-200/80 space-y-2 mb-6 text-left">
+                <p className="flex items-start gap-2">
+                  <span className="text-2xl">🖐️</span>
+                  <span><strong>Adım 1:</strong> Elinizi kameraya gösterin, yeşil iskelet görünecek</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="text-2xl">👌</span>
+                  <span><strong>Adım 2:</strong> Başparmak ve işaret parmağını birleştirerek uzaylıyı TUTUN</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="text-2xl">🚀</span>
+                  <span><strong>Adım 3:</strong> Ellerinizi hareket ettirerek uzaylıyı portala sürükleyin</span>
+                </p>
+                <p className="flex items-start gap-2">
+                  <span className="text-2xl">✋</span>
+                  <span><strong>Adım 4:</strong> Parmakları açarak portal içine BIRAKIN</span>
+                </p>
+                <p className="flex items-start gap-2 text-yellow-400">
+                  <span className="text-2xl">⭐</span>
+                  <span><strong>Bonus:</strong> Küçük uzaylılar 200 puan değerinde!</span>
+                </p>
+              </div>
+
+              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3 mb-6">
+                <p className="text-red-200 text-sm">
+                  ⏱️ <strong>60 saniye</strong> içinde en yüksek skoru yapmaya çalışın!
+                </p>
+              </div>
+
               <button
                 onClick={startGame}
-                className="px-8 py-4 bg-green-600 hover:bg-green-500 text-white text-xl font-bold rounded-lg transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(34,197,94,0.5)]"
+                className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-xl font-bold rounded-lg transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(34,197,94,0.5)]"
               >
-                OYUNU BAŞLAT
+                🚀 OYUNU BAŞLAT
               </button>
             </div>
           </div>
