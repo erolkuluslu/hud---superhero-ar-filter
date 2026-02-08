@@ -33,8 +33,8 @@ const PLANETS: Record<PlanetKey, {
   snapRadius: number; // generous hit detection
 }> = {
   neptune: { name: 'Neptün', emoji: '🔵', color: '#3b82f6', position: [0, -2.3, 0],   portalRadius: 1.1, snapRadius: 2.2 },
-  mars:    { name: 'Mars',   emoji: '🔴', color: '#ef4444', position: [-3.2, -2.1, 0], portalRadius: 1.1, snapRadius: 2.2 },
-  venus:   { name: 'Venüs',  emoji: '🟡', color: '#f59e0b', position: [3.2, -2.1, 0],  portalRadius: 1.1, snapRadius: 2.2 },
+  mars:    { name: 'Mars',   emoji: '🔴', color: '#ef4444', position: [-2.5, -2.1, 0], portalRadius: 1.1, snapRadius: 2.2 },
+  venus:   { name: 'Venüs',  emoji: '🟡', color: '#f59e0b', position: [2.5, -2.1, 0],  portalRadius: 1.1, snapRadius: 2.2 },
 };
 
 const PLANET_TEXTURE_PATHS: Record<PlanetKey, string> = {
@@ -113,12 +113,12 @@ const ALIEN_SIZES = {
   small: { scale: 0.7, bodyRadius: 0.25, bodyHeight: 0.28, points: 300, grabRadius: 0.8 }
 } as const;
 
-// Spawn configuration
+// Spawn configuration — kept inside center 75% of screen for large TV installs
 const MIN_ALIEN_DISTANCE = 1.8;
 const MIN_PORTAL_DISTANCE = 1.2;
-const MAX_X_SPAWN = 3.8;
-const MAX_Y_SPAWN = 2.5;
-const MIN_Y_SPAWN = 0.2;
+const MAX_X_SPAWN = 2.3;
+const MAX_Y_SPAWN = 2.2;
+const MIN_Y_SPAWN = 0.3;
 
 type AlienSize = keyof typeof ALIEN_SIZES;
 
@@ -729,7 +729,7 @@ const GameScene = ({
 
   const transformLandmark = useCallback((lm: { x: number, y: number, z: number }) => {
     const mirroredX = 1 - lm.x;
-    return new THREE.Vector3((mirroredX - 0.5) * 10, (0.5 - lm.y) * 6, 0);
+    return new THREE.Vector3((mirroredX - 0.5) * 8, (0.5 - lm.y) * 5.5, 0);
   }, []);
 
   const getPinchDist = useCallback((hand: any[]) => {
