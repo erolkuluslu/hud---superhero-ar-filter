@@ -114,7 +114,7 @@ const ALIEN_SIZES = {
 } as const;
 
 // Spawn configuration — kept inside center 75% of screen for large TV installs
-const MIN_ALIEN_DISTANCE = 1.8;
+const MIN_ALIEN_DISTANCE = 2.2;
 const MIN_PORTAL_DISTANCE = 1.2;
 const MAX_X_SPAWN = 2.3;
 const MAX_Y_SPAWN = 2.2;
@@ -721,7 +721,7 @@ const GameScene = ({
   // Initialize aliens (2 of each planet)
   useEffect(() => {
     const initialAliens: typeof aliens = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       initialAliens.push(spawnNewAlien(initialAliens));
     }
     setAliens(initialAliens);
