@@ -34,7 +34,7 @@ const PLANETS: Record<PlanetKey, {
 }> = {
   neptune: { name: 'Neptün', emoji: '🔵', color: '#3b82f6', position: [0, -2.3, 0],   portalRadius: 1.1, snapRadius: 2.2 },
   mars:    { name: 'Mars',   emoji: '🔴', color: '#ef4444', position: [-3.2, -2.1, 0], portalRadius: 1.1, snapRadius: 2.2 },
-  venus:   { name: 'Venüs',  emoji: '🟢', color: '#22c55e', position: [3.2, -2.1, 0],  portalRadius: 1.1, snapRadius: 2.2 },
+  venus:   { name: 'Venüs',  emoji: '🟡', color: '#f59e0b', position: [3.2, -2.1, 0],  portalRadius: 1.1, snapRadius: 2.2 },
 };
 
 const PLANET_TEXTURE_PATHS: Record<PlanetKey, string> = {
@@ -46,31 +46,64 @@ const PLANET_TEXTURE_PATHS: Record<PlanetKey, string> = {
 const PLANET_ALIEN_COLORS: Record<PlanetKey, string[]> = {
   neptune: ['#3b82f6', '#06b6d4', '#0ea5e9', '#818cf8', '#a5b4fc'],
   mars:    ['#ef4444', '#f97316', '#dc2626', '#fb923c', '#fca5a5'],
-  venus:   ['#22c55e', '#10b981', '#14b8a6', '#4ade80', '#6ee7b7'],
+  venus:   ['#f59e0b', '#fbbf24', '#fde047', '#f97316', '#fcd34d'],
 };
 
 // Per-planet science facts shown after each delivery
 const PLANET_FACTS: Record<PlanetKey, string[]> = {
   neptune: [
-    'Neptün\'ün rüzgarları saatte 2.000 km\'ye ulaşır — Güneş sisteminin en hızlı rüzgarı! 💨',
-    'Neptün, Güneş\'e 4.5 milyar km uzaklıktadır — ışık oraya 4 saatte ulaşır! ☀️',
-    'Neptün\'de bir yıl, Dünya\'da 165 yıla eşittir! 🪐',
-    'Neptün\'ün 14 uydusu var, en büyüğü Triton ters yönde döner! 🌕',
-    'Neptün o kadar soğuk ki yüzeyi -200°C\'nin altında! 🥶',
+    'Neptün\'de rüzgarlar o kadar hızlıdır ki, Dünya\'daki en hızlı jet uçağını bile geçer! 💨',
+    'Bilim insanları Neptün\'ün derinliklerinde gökyüzünden "elmas" yağdığını düşünüyor! 💎',
+    'Neptün, Güneş\'e o kadar uzaktır ki orada öğlen vakti bile hava alacakaranlık gibidir. 🌑',
+    'Neptün\'de bir yıl tam 165 Dünya yılı sürer; yani orada hiç kimse bir doğum günü bile kutlayamadı! 🎂',
+    'Bu gezegen o kadar soğuktur ki, üzerinden geçen bir bulut anında buza dönüşür! 🥶',
+    'Neptün, matematik kullanılarak keşfedilen tek gezegendir; teleskopla bakmadan önce kağıt üzerinde bulundu! 📐',
+    'Triton adında yaramaz bir uydusu vardır ve diğer her şeyin tersine doğru döner! 🔄',
+    'Neptün\'ün mavi rengi, atmosferindeki metan gazından gelir; tıpkı dev bir mavi bilye gibi! 🔵',
+    'Dünya, Neptün\'ün içine tam 57 kez sığabilir; o gerçek bir dev! 🌍',
+    'Neptün\'e bir mesaj atsan, ışık hızında bile gitse ulaşması 4 saat sürer! 📱',
+    'Neptün\'ün halkaları vardır ama çok siliktir, onları görmek için çok güçlü gözlükler gerekir! 👓',
+    'Güneş sisteminin en rüzgarlı gezegenidir, şapkanı tutsan iyi olur! 👒',
+    'Neptün bir "Buz Devi"dir; gaz ve buz karışımından oluşan dev bir slushy (buzlu içecek) gibidir! 🥤',
+    'Neptün\'de "Büyük Karanlık Nokta" denen dev bir fırtına vardı, içine tüm Dünya sığabilirdi! 🌀',
+    'Oraya giden tek ziyaretçi Voyager 2 uzay aracıdır, o da sadece yanından geçip el salladı! 👋',
+    'Neptün\'ün çekirdeği Dünya kadar büyüktür ama üzeri dev bir okyanus ve gazla kaplıdır. 🌊',
   ],
   mars: [
-    'Mars\'taki Olympus Dağı, Everest\'in 3 katı yüksekliğindedir — 21 km! ⛰️',
-    'Mars\'ın yüzeyi demir oksit (pas) yüzünden kırmızı görünür! 🔴',
-    'Mars\'ta bir gün 24 saat 37 dakikadır — neredeyse Dünya gibi! ⏰',
-    'Mars\'ta dev toz fırtınaları tüm gezegeni kaplayabilir! 🌪️',
-    'Mars\'ın iki küçük uydusu var: Phobos ve Deimos! 🌑',
+    'Mars "Kızıl Gezegen" olarak bilinir çünkü her yer paslanmış demir tozuyla kaplıdır! 🔴',
+    'Mars\'ta yerçekimi azdır; orada zıplarsan Dünya\'dakinden 3 kat daha yükseğe çıkabilirsin! 🏀',
+    'Güneş sisteminin en yüksek dağı Olimpos Dağı Mars\'tadır; Everest\'ten 3 kat daha büyüktür! 🏔️',
+    'Mars\'ta gökyüzü gündüzleri pembe-kırmızı, gün batımında ise mavidir! (Bizimkinin tam tersi) 🌅',
+    'Şu anda Mars yüzeyinde gezen ve fotoğraf çeken robot arabalar var! 🤖',
+    'Mars\'ın iki tane yamuk yumuk uydusu vardır: Phobos ve Deimos. Patatese benzerler! 🥔',
+    'Mars\'ta dev toz fırtınaları çıkar ve bazen tüm gezegeni sarıp aylarca sürebilir! 🌪️',
+    'Eskiden Mars\'ta nehirler ve göller olduğu düşünülüyor, belki de içinde yaşam vardı! 💧',
+    'Mars\'ta bir gün Dünya\'ya çok benzer; sadece 37 dakika daha uzundur. Ekstra oyun zamanı! ⏰',
+    'Mars\'ın kutuplarında kışın karbondioksit donar, buna "Kuru Buz" denir. ❄️',
+    'Gelecekte insanlar Mars\'ta yaşayabilir, belki de ilk giden sen olacaksın! 🚀',
+    'Mars Dünya\'nın yarısı kadardır, yani bizim küçük kardeşimiz gibidir. 🌍',
+    'Mars\'ta "Valles Marineris" adında dev bir kanyon vardır, Amerika\'yı baştan başa kaplayacak kadar uzundur! 🗺️',
+    'Mars\'ta sesler Dünya\'dakinden farklı duyulur, atmosferi çok incedir. 👂',
+    'Mars\'a gidiş roketle yaklaşık 7 ay sürer, uzun bir yolculuğa hazır mısın? 🎒',
+    'Mars\'ın toprağı zehirli olabilir, bu yüzden orada tarım yapmak için özel seralar gerekecek! 🌱',
   ],
   venus: [
-    'Venüs\'te bir gün, bir yıldan daha uzundur — çok yavaş döner! ⏳',
-    'Venüs, Güneş sisteminin en sıcak gezegenidir — 465°C! 🔥',
-    'Venüs ters döner — Güneş orada batıdan doğar! 🌅',
-    'Venüs\'ün atmosferi çok yoğun — insan orada ezilirdi! 💨',
-    'Venüs, Dünya\'ya en yakın komşu gezegendir! 🌍',
+    'Venüs Güneş sisteminin en sıcak gezegenidir; bir pizza fırınından bile daha sıcaktır! 🔥',
+    'Venüs diğer gezegenlerin aksine ters döner; orada Güneş batıdan doğar! ⬅️',
+    'Venüs\'te bir gün, bir yıldan daha uzundur! Yani doğum günün her gün kutlanabilir! 🎂',
+    'Venüs o kadar parlaktır ki, bazen gündüzleri bile gökyüzünde parlayan bir elmas gibi görünür. ✨',
+    'Venüs\'ün atmosferi çok kalındır, yüzeyinde durmak denizin en dibinde durmak gibi hissettirir! 🏋️',
+    'Venüs\'te yağmur asit olarak yağar, yani şemsiyen metal olsa bile eriyebilir! ☔',
+    'Dünya ve Venüs boyut olarak neredeyse aynıdır, bu yüzden onlara "İkiz Gezegenler" denir. 👯',
+    'Venüs\'e inen robotlar aşırı sıcak yüzünden sadece birkaç saat çalışabildi, sonra eridiler! 🫠',
+    'Venüs\'te binlerce yanardağ vardır, bazıları hala püskürüyor olabilir! 🌋',
+    'Kalın bulutları ısıyı içeri hapseder, buna "Sera Etkisi" denir; en iyi battaniyeden bile sıcak tutar! 🌡️',
+    'Venüs\'ün hiç uydusu (ayı) yoktur, geceleri gökyüzünde yalnızdır. 🌑',
+    'Venüs\'ün yüzeyini teleskopla göremezsin çünkü kalın bulutlar onu hep saklar. ☁️',
+    'Adını aşk ve güzellik tanrıçasından almıştır ama aslında çok hırçın bir gezegendir! 💔',
+    'Venüs\'te rüzgarlar bulutları gezegenin etrafında süper hızlı döndürür. 🌬️',
+    'Eğer Venüs\'te yürüseydin, ayak izlerin hiç bozulmadan sonsuza kadar kalabilirdi (rüzgarın erişemediği yerlerde). 👣',
+    'Sarı ve turuncu renkli bir gökyüzü vardır, Dünya gibi mavi değildir. 🧡',
   ],
 };
 
@@ -1071,8 +1104,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     };
   }, [showInstructions, gameActive, handLandmarksRef, startGame]);
 
-  const allFacts = useMemo(() => [...PLANET_FACTS.neptune, ...PLANET_FACTS.mars, ...PLANET_FACTS.venus], []);
-  const scienceFact = useMemo(() => allFacts[Math.floor(Math.random() * allFacts.length)], [timeLeft === 0]);
   const handLandmarkCount = handLandmarksRef.current?.[0]?.length ?? 0;
   const isHandDetected = (handLandmarksRef.current?.length ?? 0) > 0;
 
@@ -1196,7 +1227,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                 className="text-xl font-bold mb-3 uppercase tracking-widest"
                 style={{ color: PLANETS[deliveryFact.planet].color }}
               >
-                🔬 Bilim Gerçeği
+                🔬 Bilimsel Bilgi
               </p>
               <p className="text-white text-xl font-semibold leading-relaxed">{deliveryFact.text}</p>
               <p className="mt-6 text-base" style={{ color: `${PLANETS[deliveryFact.planet].color}bb` }}>
@@ -1208,104 +1239,88 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
 
         {/* Instructions / End Screen */}
         {!gameActive && isReady && showInstructions && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-auto overflow-y-auto">
-            <div className="bg-black/90 backdrop-blur-md border border-green-500/50 p-8 rounded-2xl text-center max-w-2xl my-8 relative">
-              {/* STEAM End Screen when game finished */}
-              {timeLeft === 0 ? (
-                <>
-                  <div className="mb-4">
-                    <p className="text-2xl font-bold text-yellow-400">🏆 Oyun Bitti!</p>
-                    <p className="text-5xl font-bold text-yellow-300 mt-2">{score} PUAN</p>
-                  </div>
-                  {/* Per-planet results */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    {(['neptune', 'mars', 'venus'] as PlanetKey[]).map(pk => (
-                      <div key={pk} className="bg-black/40 rounded-lg p-3 border" style={{ borderColor: PLANETS[pk].color }}>
-                        <p className="text-2xl">{PLANETS[pk].emoji}</p>
-                        <p className="font-bold" style={{ color: PLANETS[pk].color }}>{PLANETS[pk].name}</p>
-                        <p className="text-white text-xl font-mono">×{planetDeliveryCounts[pk]}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Science fact */}
-                  <div className="bg-blue-900/40 border border-blue-500/40 rounded-lg p-4 mb-4">
-                    <p className="text-blue-300 text-sm font-semibold">🔬 BİLİM SORUSU</p>
-                    <p className="text-white mt-1">{scienceFact}</p>
-                  </div>
-                  {/* STEAM badges */}
-                  <div className="flex justify-center gap-2 mb-4 flex-wrap">
-                    {[
-                      { icon: '🔬', label: 'Bilim', desc: 'Gezegenleri öğrendin!' },
-                      { icon: '💻', label: 'Teknoloji', desc: 'YZ kullandın!' },
-                      { icon: '⚙️', label: 'Mühendislik', desc: 'Portalleri açtın!' },
-                      { icon: '🎨', label: 'Sanat', desc: 'Renkleri eşleştin!' },
-                      { icon: '🔢', label: 'Matematik', desc: `${planetDeliveryCounts.neptune + planetDeliveryCounts.mars + planetDeliveryCounts.venus} teslimat!` },
-                    ].map(badge => (
-                      <div key={badge.label} className="bg-purple-900/40 border border-purple-500/30 rounded-lg px-3 py-2 text-center">
-                        <p className="text-xl">{badge.icon}</p>
-                        <p className="text-purple-300 text-xs font-bold">{badge.label}</p>
-                        <p className="text-purple-200 text-xs">{badge.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-3xl font-bold text-green-400 mb-3">🌌 PENÇE OYUNU</h2>
-                  <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-4 mb-4">
-                    <p className="text-purple-300 font-semibold">Uzay fırtınası uzaylıları evlerinden kopardı!</p>
-                    <p className="text-purple-200 text-sm mt-1">Onları doğru gezegene gönder: 🔴 Mars · 🔵 Neptün · 🟢 Venüs</p>
-                  </div>
-                </>
-              )}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-auto"
+            style={{ background: 'linear-gradient(135deg, rgba(0,0,20,0.92), rgba(10,0,40,0.92))' }}
+          >
+            <div className="w-full max-w-3xl mx-6 text-center">
 
-              {/* Hand Hold Progress */}
-              {handHoldProgress > 0 && (
-                <div className="absolute top-4 right-4 flex flex-col items-center gap-2">
-                  <div className="relative w-16 h-16">
-                    <svg className="transform -rotate-90 w-16 h-16">
-                      <circle cx="32" cy="32" r="28" stroke="#22c55e" strokeWidth="4" fill="none" opacity="0.3" />
-                      <circle
-                        cx="32" cy="32" r="28" stroke="#22c55e" strokeWidth="4" fill="none"
-                        strokeDasharray={`${2 * Math.PI * 28}`}
-                        strokeDashoffset={`${2 * Math.PI * 28 * (1 - handHoldProgress / 100)}`}
-                        className="transition-all duration-100"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-green-400 font-bold text-lg">{Math.ceil(3 - (handHoldProgress / 100) * 3)}</span>
-                    </div>
-                  </div>
-                  <p className="text-green-400 text-xs">✋ El havada tut</p>
+              {/* Score banner (only after game ends) */}
+              {timeLeft === 0 && (
+                <div className="mb-6 animate-bounce">
+                  <p className="text-2xl font-bold text-yellow-300">🏆 Harika İş!</p>
+                  <p className="text-7xl font-black text-yellow-400 drop-shadow-[0_0_30px_rgba(250,204,21,0.8)]">{score}</p>
+                  <p className="text-2xl text-yellow-200 font-bold tracking-widest">PUAN</p>
                 </div>
               )}
 
-              {/* How to Play */}
-              {timeLeft !== 0 && (
-                <>
-                  <h3 className="text-xl font-bold text-green-300 mb-3">📋 Nasıl Oynanır?</h3>
-                  <div className="text-green-200/80 space-y-2 mb-4 text-left">
-                    <p className="flex items-start gap-2"><span className="text-2xl">🖐️</span><span><strong>Adım 1:</strong> Elinizi kameraya gösterin</span></p>
-                    <p className="flex items-start gap-2"><span className="text-2xl">👌</span><span><strong>Adım 2:</strong> Parmakları birleştirerek renkli uzaylıyı TUTUN</span></p>
-                    <p className="flex items-start gap-2"><span className="text-2xl">🚀</span><span><strong>Adım 3:</strong> Uzaylıyı AYNI RENKLİ gezegene taşıyın</span></p>
-                    <p className="flex items-start gap-2"><span className="text-2xl">✋</span><span><strong>Adım 4:</strong> Portal içinde parmakları açarak BIRAKIN</span></p>
-                    <p className="flex items-start gap-2 text-yellow-400"><span className="text-2xl">⭐</span><span><strong>İpucu:</strong> Daha fazla uzaylı gönderdikçe yeni gezegenler açılır!</span></p>
-                  </div>
-                  <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3 mb-4">
-                    <p className="text-red-200 text-sm">⏱️ <strong>60 saniye</strong> içinde en yüksek skoru yap!</p>
-                  </div>
-                </>
+              {/* Title */}
+              {timeLeft === 0 ? null : (
+                <div className="mb-6">
+                  <p className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400 drop-shadow-[0_0_20px_rgba(34,197,94,0.6)]">
+                    🌌 PENÇE OYUNU
+                  </p>
+                  <p className="text-xl text-purple-300 mt-2 font-semibold">Uzaylıları evlerine gönder!</p>
+                </div>
               )}
 
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={startGame}
-                  className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-xl font-bold rounded-lg transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(34,197,94,0.5)]"
-                >
-                  🚀 OYUNU BAŞLAT
-                </button>
-                <p className="text-green-400/60 text-xs">💡 İpucu: Elinizi 3 saniye havada tutarak başlayabilirsiniz</p>
+              {/* 3 Steps */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {[
+                  { icon: '🖐️', title: 'ELİNİ GÖSTER', desc: 'Kameraya uzat' },
+                  { icon: '👌', title: 'UZAYLI TUT', desc: 'Parmakları birleştir' },
+                  { icon: '🪐', title: 'GEZEGENİNE GÖTÜR', desc: 'Aynı renge taşı' },
+                ].map((step, i) => (
+                  <div key={i} className="rounded-2xl p-5 border-2 flex flex-col items-center gap-2"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      borderColor: ['#22c55e', '#fbbf24', '#a855f7'][i],
+                    }}
+                  >
+                    <span className="text-5xl">{step.icon}</span>
+                    <p className="text-white font-black text-base leading-tight">{step.title}</p>
+                    <p className="text-white/60 text-sm">{step.desc}</p>
+                  </div>
+                ))}
               </div>
+
+              {/* Hand hold progress (big, centered) */}
+              {handHoldProgress > 0 ? (
+                <div className="flex flex-col items-center gap-3 mb-4">
+                  <div className="relative w-24 h-24">
+                    <svg className="transform -rotate-90 w-24 h-24">
+                      <circle cx="48" cy="48" r="42" stroke="#22c55e" strokeWidth="5" fill="none" opacity="0.2" />
+                      <circle
+                        cx="48" cy="48" r="42" stroke="#22c55e" strokeWidth="5" fill="none"
+                        strokeDasharray={`${2 * Math.PI * 42}`}
+                        strokeDashoffset={`${2 * Math.PI * 42 * (1 - handHoldProgress / 100)}`}
+                        className="transition-all duration-100"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-green-400 font-black text-3xl">{Math.ceil(3 - (handHoldProgress / 100) * 3)}</span>
+                    </div>
+                  </div>
+                  <p className="text-green-300 text-lg font-bold animate-pulse">✋ Elinizi havada tutun…</p>
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <p className="text-white/50 text-base">✋ Elinizi 3 saniye havada tutarak başlayabilirsiniz</p>
+                </div>
+              )}
+
+              {/* Start button */}
+              <button
+                onClick={startGame}
+                className="w-full py-6 text-3xl font-black rounded-2xl transition-all transform hover:scale-105 active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, #16a34a, #059669)',
+                  boxShadow: '0 0 40px rgba(34,197,94,0.6), 0 0 80px rgba(34,197,94,0.2)',
+                }}
+              >
+                🚀 OYUNU BAŞLAT
+              </button>
+
             </div>
           </div>
         )}
