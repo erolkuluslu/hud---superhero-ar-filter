@@ -5,6 +5,17 @@ import { Text, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { useFaceDetection } from '../hooks/useFaceDetection';
 
+// ============================================================
+// ⚙️ PERFORMANS AYARLARI (Bunu Değiştir)
+// ============================================================
+// TRUE: M4 Mac Air, RTX Ekran Kartlı PC'ler (Full Görsel Kalite)
+// FALSE: Eski Mac Mini, Intel UHD Graphics, Eski Laptoplar (Maksimum FPS)
+const HIGH_PERFORMANCE_MODE = false;
+
+// Performans moduna göre segment sayıları (Geometry Complexity)
+const SEGMENTS = HIGH_PERFORMANCE_MODE ? 32 : 12;
+const SPHERE_SEGMENTS = HIGH_PERFORMANCE_MODE ? 32 : 16;
+
 interface TheClawGameProps {
   onBack: () => void;
 }
@@ -30,11 +41,11 @@ const PLANETS: Record<PlanetKey, {
   color: string;
   position: [number, number, number];
   portalRadius: number;
-  snapRadius: number; // generous hit detection
+  snapRadius: number;
 }> = {
-  neptune: { name: 'Neptün', emoji: '🔵', color: '#3b82f6', position: [0, -2.3, 0],   portalRadius: 1.1, snapRadius: 2.2 },
-  mars:    { name: 'Mars',   emoji: '🔴', color: '#ef4444', position: [-2.5, -2.1, 0], portalRadius: 1.1, snapRadius: 2.2 },
-  venus:   { name: 'Venüs',  emoji: '🟡', color: '#f59e0b', position: [2.5, -2.1, 0],  portalRadius: 1.1, snapRadius: 2.2 },
+  neptune: { name: 'Neptün', emoji: '🔵', color: '#3b82f6', position: [0, -2.3, 0], portalRadius: 1.1, snapRadius: 2.2 },
+  mars: { name: 'Mars', emoji: '🔴', color: '#ef4444', position: [-2.5, -2.1, 0], portalRadius: 1.1, snapRadius: 2.2 },
+  venus: { name: 'Venüs', emoji: '🟡', color: '#f59e0b', position: [2.5, -2.1, 0], portalRadius: 1.1, snapRadius: 2.2 },
 };
 
 const PLANET_TEXTURE_PATHS: Record<PlanetKey, string> = {
@@ -45,11 +56,11 @@ const PLANET_TEXTURE_PATHS: Record<PlanetKey, string> = {
 
 const PLANET_ALIEN_COLORS: Record<PlanetKey, string[]> = {
   neptune: ['#3b82f6', '#06b6d4', '#0ea5e9', '#818cf8', '#a5b4fc'],
-  mars:    ['#ef4444', '#f97316', '#dc2626', '#fb923c', '#fca5a5'],
-  venus:   ['#f59e0b', '#fbbf24', '#fde047', '#f97316', '#fcd34d'],
+  mars: ['#ef4444', '#f97316', '#dc2626', '#fb923c', '#fca5a5'],
+  venus: ['#f59e0b', '#fbbf24', '#fde047', '#f97316', '#fcd34d'],
 };
 
-// Per-planet science facts shown after each delivery
+// Per-planet science facts
 const PLANET_FACTS: Record<PlanetKey, string[]> = {
   neptune: [
     'Neptün\'de rüzgarlar o kadar hızlıdır ki, Dünya\'daki en hızlı jet uçağını bile geçer! 💨',
@@ -107,13 +118,11 @@ const PLANET_FACTS: Record<PlanetKey, string[]> = {
   ],
 };
 
-// Alien sizes and points configuration
 const ALIEN_SIZES = {
   normal: { scale: 1.0, bodyRadius: 0.35, bodyHeight: 0.4, points: 150, grabRadius: 1.0 },
   small: { scale: 0.7, bodyRadius: 0.25, bodyHeight: 0.28, points: 300, grabRadius: 0.8 }
 } as const;
 
-// Spawn configuration — kept inside center 75% of screen for large TV installs
 const MIN_ALIEN_DISTANCE = 2.2;
 const MIN_PORTAL_DISTANCE = 1.2;
 const MAX_X_SPAWN = 2.3;
@@ -123,7 +132,7 @@ const MIN_Y_SPAWN = 0.3;
 type AlienSize = keyof typeof ALIEN_SIZES;
 
 // ============================================================
-// ALIEN COMPONENT
+// ALIEN COMPONENT (Optimized)
 // ============================================================
 const Alien = React.forwardRef<THREE.Group, {
   position: [number, number, number],
@@ -149,7 +158,6 @@ const Alien = React.forwardRef<THREE.Group, {
     if (!meshRef.current) return;
 
     if (isRejected) {
-      // Bounce-back animation
       rejectProgress.current = Math.min(rejectProgress.current + delta * 3, 1);
       const bounce = Math.sin(rejectProgress.current * Math.PI) * 0.8;
       meshRef.current.position.y = basePosition.current.y + bounce;
@@ -158,11 +166,14 @@ const Alien = React.forwardRef<THREE.Group, {
     } else {
       rejectProgress.current = 0;
       if (isGrabbed && grabbedPosition) {
+        // Smooth lerp is better for performance than stiff movement
         meshRef.current.position.lerp(grabbedPosition, 0.5);
         meshRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 10) * 0.3;
         meshRef.current.scale.setScalar(1.3);
       } else {
         const targetY = basePosition.current.y + Math.sin(state.clock.elapsedTime * 2 + bobOffset) * 0.1;
+        // Dampening for smoother movement on low FPS
+        const dampSpeed = 5;
         meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, basePosition.current.x, 0.1);
         meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, targetY, 0.1);
         meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, basePosition.current.z, 0.1);
@@ -182,7 +193,7 @@ const Alien = React.forwardRef<THREE.Group, {
     <group ref={meshRef} position={position}>
       {/* Grab zone ring */}
       <mesh ref={ringRef}>
-        <torusGeometry args={[sizeConfig.grabRadius, 0.03 * sizeConfig.scale, 8, 32]} />
+        <torusGeometry args={[sizeConfig.grabRadius, 0.03 * sizeConfig.scale, 4, SEGMENTS]} />
         <meshBasicMaterial
           color={isNearHand ? '#fbbf24' : planetColor}
           transparent
@@ -190,63 +201,70 @@ const Alien = React.forwardRef<THREE.Group, {
         />
       </mesh>
 
-      {/* Body */}
+      {/* Body - Conditional Material */}
       <mesh>
-        <capsuleGeometry args={[sizeConfig.bodyRadius, sizeConfig.bodyHeight, 8, 16]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={isGrabbed ? 1 : (isNearHand ? 0.6 : 0.3)}
-        />
+        <capsuleGeometry args={[sizeConfig.bodyRadius, sizeConfig.bodyHeight, 4, 8]} />
+        {HIGH_PERFORMANCE_MODE ? (
+          <meshStandardMaterial
+            color={color}
+            emissive={color}
+            emissiveIntensity={isGrabbed ? 1 : (isNearHand ? 0.6 : 0.3)}
+          />
+        ) : (
+          <meshBasicMaterial color={color} />
+        )}
       </mesh>
 
-      {/* Planet dot indicator on body */}
+      {/* Planet dot indicator */}
       <mesh position={[0, 0.1 * sizeConfig.scale, sizeConfig.bodyRadius + 0.01]}>
-        <circleGeometry args={[0.08 * sizeConfig.scale, 12]} />
+        <circleGeometry args={[0.08 * sizeConfig.scale, 8]} />
         <meshBasicMaterial color={planetColor} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Left Eye */}
-      <mesh position={[-0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.28 * sizeConfig.scale]}>
-        <sphereGeometry args={[0.1 * sizeConfig.scale, 16, 16]} />
-        <meshStandardMaterial color="white" />
-      </mesh>
-      <mesh position={[-0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.36 * sizeConfig.scale]}>
-        <sphereGeometry args={[0.05 * sizeConfig.scale, 16, 16]} />
-        <meshStandardMaterial color="black" />
-      </mesh>
-
-      {/* Right Eye */}
-      <mesh position={[0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.28 * sizeConfig.scale]}>
-        <sphereGeometry args={[0.1 * sizeConfig.scale, 16, 16]} />
-        <meshStandardMaterial color="white" />
-      </mesh>
-      <mesh position={[0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.36 * sizeConfig.scale]}>
-        <sphereGeometry args={[0.05 * sizeConfig.scale, 16, 16]} />
-        <meshStandardMaterial color="black" />
-      </mesh>
+      {/* Eyes - Low Poly */}
+      <group>
+        <mesh position={[-0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.28 * sizeConfig.scale]}>
+          <sphereGeometry args={[0.1 * sizeConfig.scale, 8, 8]} />
+          <meshBasicMaterial color="white" />
+        </mesh>
+        <mesh position={[-0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.36 * sizeConfig.scale]}>
+          <sphereGeometry args={[0.05 * sizeConfig.scale, 8, 8]} />
+          <meshBasicMaterial color="black" />
+        </mesh>
+        <mesh position={[0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.28 * sizeConfig.scale]}>
+          <sphereGeometry args={[0.1 * sizeConfig.scale, 8, 8]} />
+          <meshBasicMaterial color="white" />
+        </mesh>
+        <mesh position={[0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.36 * sizeConfig.scale]}>
+          <sphereGeometry args={[0.05 * sizeConfig.scale, 8, 8]} />
+          <meshBasicMaterial color="black" />
+        </mesh>
+      </group>
 
       {/* Antenna */}
       <mesh position={[0, 0.55 * sizeConfig.scale, 0]}>
-        <cylinderGeometry args={[0.03 * sizeConfig.scale, 0.03 * sizeConfig.scale, 0.25 * sizeConfig.scale, 8]} />
-        <meshStandardMaterial color={color} />
+        <cylinderGeometry args={[0.03 * sizeConfig.scale, 0.03 * sizeConfig.scale, 0.25 * sizeConfig.scale, 4]} />
+        <meshBasicMaterial color={color} />
       </mesh>
       <mesh position={[0, 0.72 * sizeConfig.scale, 0]}>
-        <sphereGeometry args={[0.07 * sizeConfig.scale, 16, 16]} />
-        <meshStandardMaterial color={planetColor} emissive={planetColor} emissiveIntensity={1} />
+        <sphereGeometry args={[0.07 * sizeConfig.scale, 8, 8]} />
+        <meshBasicMaterial color={planetColor} />
       </mesh>
 
-      {isNearHand && !isGrabbed && (
+      {/* Lights only in High Perf Mode */}
+      {HIGH_PERFORMANCE_MODE && isNearHand && !isGrabbed && (
         <pointLight position={[0, 0, 0]} color="#fbbf24" intensity={3} distance={2} />
       )}
+
       {isGrabbed && (
-        <>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.5 * sizeConfig.scale, 0.6 * sizeConfig.scale, 32]} />
-            <meshBasicMaterial color="#fbbf24" transparent opacity={0.9} side={THREE.DoubleSide} />
-          </mesh>
-          <pointLight position={[0, 0, 0]} color="#fbbf24" intensity={5 * sizeConfig.scale} distance={3 * sizeConfig.scale} />
-        </>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.5 * sizeConfig.scale, 0.6 * sizeConfig.scale, SEGMENTS]} />
+          <meshBasicMaterial color="#fbbf24" transparent opacity={0.9} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+
+      {HIGH_PERFORMANCE_MODE && isGrabbed && (
+        <pointLight position={[0, 0, 0]} color="#fbbf24" intensity={5 * sizeConfig.scale} distance={3 * sizeConfig.scale} />
       )}
     </group>
   );
@@ -282,16 +300,15 @@ const FallingAlien = ({
   return (
     <group ref={meshRef} position={[startPosition.x, 0, startPosition.z]}>
       <mesh>
-        <capsuleGeometry args={[sizeConfig.bodyRadius, sizeConfig.bodyHeight, 8, 16]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1} />
+        <capsuleGeometry args={[sizeConfig.bodyRadius, sizeConfig.bodyHeight, 4, 8]} />
+        <meshBasicMaterial color={color} />
       </mesh>
-      <pointLight color={color} intensity={3} distance={2} />
     </group>
   );
 };
 
 // ============================================================
-// PLANET PORTAL COMPONENT (planet image sphere)
+// PLANET PORTAL COMPONENT
 // ============================================================
 const PlanetPortal = ({
   planetKey,
@@ -320,7 +337,9 @@ const PlanetPortal = ({
   const beamRef = useRef<THREE.Mesh>(null);
   const particlesRef = useRef<THREE.Points>(null);
 
-  const particleCount = 16;
+  // Reduce particles on low perf
+  const particleCount = HIGH_PERFORMANCE_MODE ? 16 : 6;
+
   const particlePositions = useMemo(() => {
     const positions = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount; i++) {
@@ -331,21 +350,17 @@ const PlanetPortal = ({
       positions[i * 3 + 2] = Math.sin(angle) * r;
     }
     return positions;
-  }, []);
+  }, [particleCount]);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-
-    // Slowly spin planet
     if (planetRef.current) planetRef.current.rotation.y += 0.005;
-
     if (ring1Ref.current) ring1Ref.current.rotation.z = t * 0.8;
     if (ring2Ref.current) {
       ring2Ref.current.rotation.z = -t * 0.5;
       const pulse = 1 + Math.sin(t * 3) * 0.06;
       ring2Ref.current.scale.set(pulse, pulse, 1);
     }
-
     if (beamRef.current) {
       beamRef.current.visible = wantingBeam && isActive;
       if (wantingBeam) {
@@ -353,8 +368,6 @@ const PlanetPortal = ({
         beamRef.current.scale.setScalar(bp);
       }
     }
-
-    // Orbit particles around planet
     if (particlesRef.current) {
       const positions = particlesRef.current.geometry.attributes.position.array as Float32Array;
       for (let i = 0; i < particleCount; i++) {
@@ -372,32 +385,39 @@ const PlanetPortal = ({
 
   return (
     <group position={position}>
-      {/* Planet sphere with texture */}
+      {/* Planet sphere */}
       <mesh ref={planetRef}>
-        <sphereGeometry args={[1.0, 32, 32]} />
-        <meshStandardMaterial
-          map={texture}
-          emissive={planet.color}
-          emissiveIntensity={isNearHand ? 0.5 : 0.15}
-        />
+        <sphereGeometry args={[1.0, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
+        {HIGH_PERFORMANCE_MODE ? (
+          <meshStandardMaterial
+            map={texture}
+            emissive={planet.color}
+            emissiveIntensity={isNearHand ? 0.5 : 0.15}
+          />
+        ) : (
+          <meshBasicMaterial map={texture} />
+        )}
       </mesh>
 
-      {/* Inner glow ring (tilted like Saturn ring) */}
+      {/* Rings */}
       <mesh ref={ring1Ref} rotation={[Math.PI / 6, 0, 0]}>
-        <ringGeometry args={[1.1, 1.3, 32]} />
-        <meshStandardMaterial
-          color={planet.color}
-          emissive={planet.color}
-          emissiveIntensity={isNearHand ? 2.5 : 1.5}
-          transparent
-          opacity={0.9}
-          side={THREE.DoubleSide}
-        />
+        <ringGeometry args={[1.1, 1.3, SEGMENTS]} />
+        {HIGH_PERFORMANCE_MODE ? (
+          <meshStandardMaterial
+            color={planet.color}
+            emissive={planet.color}
+            emissiveIntensity={isNearHand ? 2.5 : 1.5}
+            transparent
+            opacity={0.9}
+            side={THREE.DoubleSide}
+          />
+        ) : (
+          <meshBasicMaterial color={planet.color} transparent opacity={0.6} side={THREE.DoubleSide} />
+        )}
       </mesh>
 
-      {/* Outer pulse ring */}
       <mesh ref={ring2Ref} rotation={[Math.PI / 6, 0, 0]}>
-        <ringGeometry args={[1.3, 1.5, 32]} />
+        <ringGeometry args={[1.3, 1.5, SEGMENTS]} />
         <meshBasicMaterial
           color={planet.color}
           transparent
@@ -425,18 +445,13 @@ const PlanetPortal = ({
         />
       </points>
 
-      {/* Wanting beam (vertical guide when matching alien grabbed) */}
+      {/* Beam */}
       <mesh ref={beamRef} position={[0, 3, 0]} visible={false}>
         <cylinderGeometry args={[0.1, 0.4, 6, 8, 1, true]} />
-        <meshBasicMaterial
-          color={planet.color}
-          transparent
-          opacity={0.3}
-          side={THREE.DoubleSide}
-        />
+        <meshBasicMaterial color={planet.color} transparent opacity={0.3} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Delivery count */}
+      {/* Text */}
       <Text
         position={[0, 1.7, 0]}
         fontSize={0.3}
@@ -449,15 +464,16 @@ const PlanetPortal = ({
         ×{deliveryCount}
       </Text>
 
-      {/* Planet glow light */}
-      <pointLight
-        position={[0, 0, 0]}
-        color={planet.color}
-        intensity={isNearHand ? 8 : 4}
-        distance={5}
-      />
+      {/* Light only on High Perf */}
+      {HIGH_PERFORMANCE_MODE && (
+        <pointLight
+          position={[0, 0, 0]}
+          color={planet.color}
+          intensity={isNearHand ? 8 : 4}
+          distance={5}
+        />
+      )}
 
-      {/* Falling aliens */}
       {fallingAliens.map(alien => (
         <FallingAlien
           key={alien.id}
@@ -574,32 +590,23 @@ const PinchIndicator = ({
   return (
     <group ref={ref}>
       <mesh ref={ringRef}>
-        <torusGeometry args={[1.2, 0.05, 8, 32]} />
+        <torusGeometry args={[1.2, 0.05, 4, 16]} />
         <meshBasicMaterial color={isPinching ? '#fbbf24' : '#00ff00'} transparent opacity={isPinching ? 1 : 0.6} />
       </mesh>
       <mesh>
-        <torusGeometry args={[0.8, 0.03, 8, 32]} />
+        <torusGeometry args={[0.8, 0.03, 4, 16]} />
         <meshBasicMaterial color={isPinching ? '#fbbf24' : '#00ff00'} transparent opacity={0.4} />
       </mesh>
-      <mesh rotation={[0, 0, 0]}>
-        <planeGeometry args={[0.5, 0.05]} />
-        <meshBasicMaterial color={isPinching ? '#fbbf24' : '#00ff00'} transparent opacity={0.8} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <planeGeometry args={[0.5, 0.05]} />
-        <meshBasicMaterial color={isPinching ? '#fbbf24' : '#00ff00'} transparent opacity={0.8} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[0.1, 16, 16]} />
-        <meshBasicMaterial color={isPinching ? '#fbbf24' : '#00ff00'} />
-      </mesh>
-      <pointLight color={isPinching ? '#fbbf24' : '#00ff00'} intensity={isPinching ? 5 : 2} distance={3} />
+      {/* Lights only High Perf */}
+      {HIGH_PERFORMANCE_MODE && (
+        <pointLight color={isPinching ? '#fbbf24' : '#00ff00'} intensity={isPinching ? 5 : 2} distance={3} />
+      )}
     </group>
   );
 };
 
 // ============================================================
-// ARENA (grid)
+// ARENA
 // ============================================================
 const Arena = React.memo(() => (
   <group>
@@ -619,7 +626,7 @@ const Arena = React.memo(() => (
 ));
 
 // ============================================================
-// MAIN GAME SCENE
+// GAME SCENE
 // ============================================================
 const GameScene = ({
   handLandmarksRef,
@@ -651,7 +658,6 @@ const GameScene = ({
   const [pinchPosition, setPinchPosition] = useState<THREE.Vector3 | null>(null);
   const [isPinching, setIsPinching] = useState(false);
   const [grabbedAlienId, setGrabbedAlienId] = useState<number | null>(null);
-  // Sticky grab state (refs for use inside useFrame without stale closures)
   const pinchActiveRef = useRef(false);
   const lastPinchTimeRef = useRef(0);
   const lastHandTimeRef = useRef(0);
@@ -672,7 +678,6 @@ const GameScene = ({
       const y = MIN_Y_SPAWN + Math.random() * (MAX_Y_SPAWN - MIN_Y_SPAWN);
       const z = 0;
 
-      // Check distance from all portals
       let tooCloseToPortal = false;
       for (const pk of PLANET_KEYS) {
         const pp = PLANETS[pk].position;
@@ -697,7 +702,6 @@ const GameScene = ({
 
   const spawnNewAlien = useCallback((existingAliens: typeof aliens) => {
     const existingPositions = existingAliens.map(a => a.position);
-    // Balanced spawning: pick the planet with fewest current aliens
     const counts: Record<PlanetKey, number> = { neptune: 0, mars: 0, venus: 0 };
     existingAliens.forEach(a => counts[a.planet]++);
     const minCount = Math.min(counts.neptune, counts.mars, counts.venus);
@@ -718,7 +722,6 @@ const GameScene = ({
     };
   }, [generateSpawnPosition]);
 
-  // Initialize aliens (2 of each planet)
   useEffect(() => {
     const initialAliens: typeof aliens = [];
     for (let i = 0; i < 4; i++) {
@@ -748,7 +751,6 @@ const GameScene = ({
     const hands = handLandmarksRef.current;
     const now = Date.now();
 
-    // Block all input during fact popup — release any grabbed alien
     if (showingFact) {
       if (grabbedAlienId !== null) {
         setAliens(prev => prev.map(a => a.id === grabbedAlienId ? { ...a, grabbed: false } : a));
@@ -768,7 +770,6 @@ const GameScene = ({
       const worldPos = transformLandmark(pinchPoint);
       setPinchPosition(worldPos);
 
-      // Hysteresis pinch: grab at 0.08, release only at 0.13 after 250ms grace
       const rawDist = getPinchDist(hand);
       if (rawDist < 0.08) {
         pinchActiveRef.current = true;
@@ -778,7 +779,6 @@ const GameScene = ({
       }
       const currentlyPinching = pinchActiveRef.current;
 
-      // Find closest alien (only when not already grabbing)
       if (!currentlyPinching || grabbedAlienId === null) {
         let closestAlienId: number | null = null;
         let closestDist = Infinity;
@@ -800,7 +800,6 @@ const GameScene = ({
         setNearAlienId(closestAlienId);
       }
 
-      // Find nearest portal using generous snapRadius
       let nearestPortal: PlanetKey | null = null;
       let nearestPortalDist = Infinity;
       PLANET_KEYS.forEach(pk => {
@@ -813,7 +812,6 @@ const GameScene = ({
       });
       setNearPortal(nearestPortal);
 
-      // AUTO-DELIVER: while pinching and holding alien, proximity to portal triggers delivery
       let didAutoDeliver = false;
       if (currentlyPinching && grabbedAlienId !== null && nearestPortal !== null) {
         const grabbedAlien = aliens.find(a => a.id === grabbedAlienId);
@@ -847,7 +845,6 @@ const GameScene = ({
         }
       }
 
-      // Grab START (pinch transition false→true)
       if (!didAutoDeliver && currentlyPinching && !prevPinchRef.current) {
         if (grabbedAlienId === null) {
           let closestId: number | null = null;
@@ -871,7 +868,6 @@ const GameScene = ({
         }
       }
 
-      // Manual release (fingers open away from portals) — just drop
       if (!didAutoDeliver && !currentlyPinching && prevPinchRef.current && grabbedAlienId !== null) {
         setAliens(prev => prev.map(a => a.id === grabbedAlienId ? { ...a, grabbed: false } : a));
         setGrabbedAlienId(null);
@@ -880,7 +876,6 @@ const GameScene = ({
       prevPinchRef.current = currentlyPinching;
       setIsPinching(currentlyPinching);
     } else {
-      // Hand lost — grace period of 300ms before dropping
       if (now - lastHandTimeRef.current > 300) {
         setPinchPosition(null);
         setIsPinching(false);
@@ -896,15 +891,21 @@ const GameScene = ({
     }
   });
 
-  // Determine wanting beam: grabbed alien's planet
   const grabbedAlien = aliens.find(a => a.id === grabbedAlienId);
   const grabbedPlanet = grabbedAlien?.planet ?? null;
 
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[5, 10, 5]} intensity={1} />
-      <pointLight position={[0, 3, 0]} color="#22c55e" intensity={0.3} />
+      {/* Lighting: Conditional */}
+      {HIGH_PERFORMANCE_MODE ? (
+        <>
+          <ambientLight intensity={0.6} />
+          <directionalLight position={[5, 10, 5]} intensity={1} />
+          <pointLight position={[0, 3, 0]} color="#22c55e" intensity={0.3} />
+        </>
+      ) : (
+        <ambientLight intensity={1.5} /> // Brighter ambient for basic materials
+      )}
 
       <Arena />
 
@@ -948,11 +949,6 @@ const GameScene = ({
 
       <HandSkeleton handLandmarks={handLandmarksRef.current} transform={transformLandmark} />
       <PinchIndicator position={pinchPosition} isPinching={isPinching} />
-
-      <EffectComposer multisampling={0}>
-        <Bloom luminanceThreshold={0.3} intensity={0.8} levels={3} />
-        <Vignette offset={0.1} darkness={0.2} />
-      </EffectComposer>
     </>
   );
 };
@@ -981,13 +977,16 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
   const handHoldStartRef = useRef<number>(0);
   const wrongPortalTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-
-  // Camera setup
   useEffect(() => {
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+          // Force lower resolution on low perf machines to help AI
+          video: {
+            width: { ideal: HIGH_PERFORMANCE_MODE ? 1280 : 640 },
+            height: { ideal: HIGH_PERFORMANCE_MODE ? 720 : 480 },
+            facingMode: 'user'
+          }
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -1001,7 +1000,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     startCamera();
   }, []);
 
-  // Game timer (pauses during fact display)
   useEffect(() => {
     if (gameActive && timeLeft > 0 && !showingFact) {
       const timer = setInterval(() => {
@@ -1019,7 +1017,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     }
   }, [gameActive, timeLeft, showingFact]);
 
-  // Gesture text update
   useEffect(() => {
     const interval = setInterval(() => {
       const hands = handLandmarksRef.current;
@@ -1052,7 +1049,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
 
   const handlePlanetDelivery = useCallback((planet: PlanetKey) => {
     setPlanetDeliveryCounts(prev => ({ ...prev, [planet]: prev[planet] + 1 }));
-    // Show fullscreen fact for 3s, timer pauses
     const idx = planetFactIndexRef.current[planet];
     const facts = PLANET_FACTS[planet];
     setDeliveryFact({ text: facts[idx % facts.length], planet });
@@ -1072,7 +1068,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     wrongPortalTimeoutRef.current = setTimeout(() => setWrongPortalMsg(null), 2000);
   }, []);
 
-  // Hand hold detection for starting game
   useEffect(() => {
     if (!showInstructions || gameActive) {
       setHandHoldProgress(0);
@@ -1121,7 +1116,16 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
       {/* 3D Game Canvas */}
       {isReady && (
         <div className="absolute inset-0">
-          <Canvas camera={{ position: [0, 0, 8], fov: 60 }} gl={{ alpha: true, antialias: false, powerPreference: 'high-performance' }} dpr={[1, 1.5]}>
+          <Canvas
+            camera={{ position: [0, 0, 8], fov: 60 }}
+            // PERFORMANCE: Limit pixel ratio on low perf devices to avoid huge GPU load
+            dpr={HIGH_PERFORMANCE_MODE ? [1, 1.5] : [1, 1]}
+            gl={{
+              alpha: true,
+              antialias: HIGH_PERFORMANCE_MODE, // Disable AA on low perf
+              powerPreference: 'high-performance'
+            }}
+          >
             <GameScene
               handLandmarksRef={handLandmarksRef}
               setScore={setScore}
@@ -1131,6 +1135,14 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
               onWrongPortal={handleWrongPortal}
               planetDeliveryCounts={planetDeliveryCounts}
             />
+
+            {/* PERFORMANCE: Only render post-processing effects on High Perf Mode */}
+            {HIGH_PERFORMANCE_MODE && (
+              <EffectComposer multisampling={0}>
+                <Bloom luminanceThreshold={0.3} intensity={0.8} levels={3} />
+                <Vignette offset={0.1} darkness={0.2} />
+              </EffectComposer>
+            )}
           </Canvas>
         </div>
       )}
@@ -1165,7 +1177,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Planet Score Row (Mathematics) */}
+        {/* Planet Score Row */}
         {gameActive && (
           <div className="absolute top-24 left-1/2 transform -translate-x-1/2 flex gap-4">
             {(['neptune', 'mars', 'venus'] as PlanetKey[]).map(pk => {
@@ -1182,7 +1194,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Space Narrative (intro, 5s) */}
+        {/* Space Narrative */}
         {showNarrative && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center animate-fade-in-out">
@@ -1208,7 +1220,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Science fact popup (pauses timer + blocks all interaction) */}
+        {/* Science fact popup */}
         {showingFact && deliveryFact && (
           <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-auto"
             style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
@@ -1244,7 +1256,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           >
             <div className="w-full max-w-3xl mx-6 text-center">
 
-              {/* Score banner (only after game ends) */}
               {timeLeft === 0 && (
                 <div className="mb-6 animate-bounce">
                   <p className="text-2xl font-bold text-yellow-300">🏆 Harika İş!</p>
@@ -1253,7 +1264,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                 </div>
               )}
 
-              {/* Title */}
               {timeLeft === 0 ? null : (
                 <div className="mb-6">
                   <p className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400 drop-shadow-[0_0_20px_rgba(34,197,94,0.6)]">
@@ -1263,7 +1273,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                 </div>
               )}
 
-              {/* 3 Steps */}
               <div className="grid grid-cols-3 gap-4 mb-6">
                 {[
                   { icon: '🖐️', title: 'ELİNİ GÖSTER', desc: 'Kameraya uzat' },
@@ -1283,7 +1292,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                 ))}
               </div>
 
-              {/* Hand hold progress (big, centered) */}
               {handHoldProgress > 0 ? (
                 <div className="flex flex-col items-center gap-3 mb-4">
                   <div className="relative w-24 h-24">
@@ -1309,7 +1317,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                 </div>
               )}
 
-              {/* Start button */}
               <button
                 onClick={startGame}
                 className="w-full py-6 text-3xl font-black rounded-2xl transition-all transform hover:scale-105 active:scale-95"
@@ -1325,7 +1332,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* AI HUD Panel (Technology - STEAM) */}
+        {/* AI HUD Panel */}
         <div className="absolute bottom-6 left-6">
           <div className="bg-black/70 backdrop-blur border border-blue-500/40 px-4 py-3 rounded-lg min-w-40">
             <div className="text-blue-400 text-xs tracking-widest font-bold mb-2">🤖 YAPAY ZEKA AKTİF</div>
@@ -1334,6 +1341,9 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
               <div className={isHandDetected ? 'text-green-300' : 'text-red-400'}>
                 {isHandDetected ? `✋ ${gestureText}` : '○ El Bekleniyor'}
               </div>
+              {!HIGH_PERFORMANCE_MODE && (
+                <div className="text-yellow-500 text-[10px] mt-1">⚠️ Düşük Performans Modu</div>
+              )}
               <div className="flex gap-1 mt-1">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className={`w-2 h-2 rounded-full ${isHandDetected && i < 3 ? 'bg-blue-400' : 'bg-gray-600'}`} />
