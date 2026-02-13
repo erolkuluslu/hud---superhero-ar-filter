@@ -10,6 +10,7 @@ import { MusicGame } from './components/MusicGame';
 import { ARPlayground } from './components/ARPlayground/ARPlayground';
 import { XRayGame } from './components/XRayGame';
 import { PianoGame } from './components/PianoGame';
+import { LivePuzzleGame } from './components/LivePuzzle';
 
 // Game 1: JARVIS HUD Component
 function JarvisHUD({ onBack }: { onBack: () => void }) {
@@ -28,7 +29,7 @@ function JarvisHUD({ onBack }: { onBack: () => void }) {
             facingMode: "user"
           }
         });
-        
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.onloadedmetadata = () => {
@@ -48,7 +49,7 @@ function JarvisHUD({ onBack }: { onBack: () => void }) {
     };
 
     startCamera();
-    
+
     // Cleanup camera on unmount
     return () => {
       if (videoRef.current && videoRef.current.srcObject) {
@@ -61,7 +62,7 @@ function JarvisHUD({ onBack }: { onBack: () => void }) {
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden flex items-center justify-center">
       {/* Back Button */}
-      <button 
+      <button
         onClick={onBack}
         className="absolute top-6 left-6 z-30 px-4 py-2 bg-black/50 backdrop-blur border border-cyan-500/50 text-cyan-400 rounded-lg hover:bg-cyan-900/30 transition-all flex items-center gap-2"
       >
@@ -75,19 +76,19 @@ function JarvisHUD({ onBack }: { onBack: () => void }) {
         playsInline
         muted
       />
-      
+
       {/* Dark overlay to make HUD pop */}
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-t from-black/60 via-cyan-900/10 to-black/60 pointer-events-none"></div>
-      
+
       {/* 3D HUD Layer */}
       {isReady && (
         <div className="absolute inset-0 z-10">
-          <HudOverlay 
-            landmarksRef={faceLandmarksRef} 
-            faceBlendshapesRef={faceBlendshapesRef} 
-            handLandmarksRef={handLandmarksRef} 
-            videoWidth={dims.width} 
-            videoHeight={dims.height} 
+          <HudOverlay
+            landmarksRef={faceLandmarksRef}
+            faceBlendshapesRef={faceBlendshapesRef}
+            handLandmarksRef={handLandmarksRef}
+            videoWidth={dims.width}
+            videoHeight={dims.height}
           />
         </div>
       )}
@@ -97,13 +98,13 @@ function JarvisHUD({ onBack }: { onBack: () => void }) {
 
       {/* Loading / Error States */}
       {isLoading && !cameraError && (
-         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-              <h2 className="text-cyan-400 font-mono text-xl tracking-widest animate-pulse">PROTOKOLLER BAŞLATILIYOR...</h2>
-              <p className="text-cyan-700 mt-2 text-sm">Görüntü Modelleri Yükleniyor</p>
-            </div>
-         </div>
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black">
+          <div className="flex flex-col items-center">
+            <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <h2 className="text-cyan-400 font-mono text-xl tracking-widest animate-pulse">PROTOKOLLER BAŞLATILIYOR...</h2>
+            <p className="text-cyan-700 mt-2 text-sm">Görüntü Modelleri Yükleniyor</p>
+          </div>
+        </div>
       )}
 
       {cameraError && (
@@ -111,7 +112,7 @@ function JarvisHUD({ onBack }: { onBack: () => void }) {
           <div className="p-8 border border-red-500 rounded max-w-md text-center">
             <h2 className="text-red-500 text-2xl font-bold mb-2">SİSTEM HATASI</h2>
             <p className="text-red-300">{cameraError}</p>
-            <button 
+            <button
               onClick={onBack}
               className="mt-4 px-6 py-2 bg-red-900/50 hover:bg-red-900 text-red-200 border border-red-500 rounded uppercase tracking-wider transition-colors"
             >
@@ -167,6 +168,10 @@ function App() {
 
   if (currentGame === 8) {
     return <PianoGame onBack={handleBackToMenu} />;
+  }
+
+  if (currentGame === 9) {
+    return <LivePuzzleGame onBack={handleBackToMenu} />;
   }
 
   // Default: Show game menu

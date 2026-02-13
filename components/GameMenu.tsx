@@ -11,7 +11,7 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-cyan-950 to-gray-900"></div>
         {/* Grid Pattern */}
-        <div 
+        <div
           className="absolute inset-0 opacity-20"
           style={{
             backgroundImage: `
@@ -55,7 +55,7 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
         >
           {/* Card Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+
           {/* Icon Area */}
           <div className="relative h-48 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-cyan-900/30 to-transparent"></div>
@@ -102,7 +102,7 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
         >
           {/* Card Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-t from-green-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+
           {/* Icon Area */}
           <div className="relative h-48 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-green-900/30 to-transparent"></div>
@@ -161,7 +161,7 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
         >
           {/* Card Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-t from-orange-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+
           {/* Icon Area */}
           <div className="relative h-48 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-green-600/30 via-transparent to-amber-900/30"></div>
@@ -202,10 +202,10 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
         >
           {/* Card Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-t from-red-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+
           {/* Lava animation background */}
           <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-orange-600 via-red-500 to-transparent opacity-60 animate-pulse"></div>
-          
+
           {/* Icon Area */}
           <div className="relative h-48 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 to-red-900/50"></div>
@@ -249,14 +249,14 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
         >
           {/* Card Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-t from-purple-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+
           {/* Animated music waves background */}
           <div className="absolute bottom-0 left-0 right-0 h-24 flex items-end justify-center gap-1 opacity-40">
             {Array.from({ length: 20 }).map((_, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="w-2 bg-gradient-to-t from-purple-500 to-pink-400 rounded-t animate-pulse"
-                style={{ 
+                style={{
                   height: `${20 + Math.sin(i * 0.5) * 30}px`,
                   animationDelay: `${i * 0.1}s`,
                   animationDuration: '0.5s'
@@ -264,7 +264,7 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
               ></div>
             ))}
           </div>
-          
+
           {/* Icon Area */}
           <div className="relative h-48 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-purple-900/50 to-transparent"></div>
@@ -308,14 +308,14 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
         >
           {/* Card Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+
           {/* Animated Particles Background */}
           <div className="absolute bottom-0 left-0 right-0 h-full overflow-hidden opacity-30">
             {Array.from({ length: 15 }).map((_, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="absolute w-1 h-1 bg-white rounded-full animate-ping"
-                style={{ 
+                style={{
                   left: `${Math.random() * 100}%`,
                   top: `${Math.random() * 100}%`,
                   animationDuration: `${1 + Math.random() * 2}s`,
@@ -324,7 +324,7 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
               ></div>
             ))}
           </div>
-          
+
           {/* Icon Area */}
           <div className="relative h-48 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-indigo-900/50 to-transparent"></div>
@@ -364,12 +364,12 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
         >
           {/* Card Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-t from-blue-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+
           {/* Skeleton Background */}
           <div className="absolute inset-0 flex items-center justify-center opacity-20">
-             <div className="w-48 h-64 border-4 border-dashed border-blue-400 rounded-full animate-pulse"></div>
+            <div className="w-48 h-64 border-4 border-dashed border-blue-400 rounded-full animate-pulse"></div>
           </div>
-          
+
           {/* Icon Area */}
           <div className="relative h-48 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-blue-900/50 to-transparent"></div>
@@ -407,14 +407,14 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
         >
           {/* Card Glow Effect */}
           <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-          
+
           {/* Piano Keys Background */}
           <div className="absolute inset-0 flex justify-center opacity-10">
-             {Array.from({ length: 8 }).map((_, i) => (
-               <div key={i} className="w-8 h-full border-r border-white/20"></div>
-             ))}
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="w-8 h-full border-r border-white/20"></div>
+            ))}
           </div>
-          
+
           {/* Icon Area */}
           <div className="relative h-48 flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-slate-700/50 to-transparent"></div>
@@ -441,6 +441,51 @@ export const GameMenu: React.FC<GameMenuProps> = ({ onSelectGame }) => {
 
           {/* Play Button Hint */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-xs tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+            ▶ OYNA
+          </div>
+        </button>
+
+        {/* Game 9: LIVE PUZZLE */}
+        <button
+          onClick={() => onSelectGame(9)}
+          className="group relative w-80 h-96 bg-gradient-to-br from-zinc-900/80 to-stone-900/80 backdrop-blur-md border border-[#ccff00]/30 rounded-2xl overflow-hidden transition-all duration-500 hover:scale-105 hover:border-[#ccff00] hover:shadow-[0_0_50px_rgba(204,255,0,0.4)]"
+        >
+          {/* Card Glow Effect */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#ccff00]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+          {/* Grid Background */}
+          <div className="absolute inset-0 flex flex-wrap opacity-20">
+            {Array.from({ length: 16 }).map((_, i) => (
+              <div key={i} className="w-1/4 h-1/4 border border-[#ccff00]/30"></div>
+            ))}
+          </div>
+
+          {/* Icon Area */}
+          <div className="relative h-48 flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#ccff00]/10 to-transparent"></div>
+            {/* Puzzle Icon */}
+            <div className="relative text-center">
+              <div className="text-7xl animate-pulse">🧩</div>
+              <div className="absolute -top-4 -right-6 text-3xl animate-bounce" style={{ animationDelay: '0.2s' }}>🖐️</div>
+              <div className="absolute -bottom-2 -left-6 text-3xl animate-bounce" style={{ animationDelay: '0.4s' }}>✨</div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 text-center relative z-10">
+            <div className="text-[#ccff00] text-xs tracking-[0.3em] mb-2">OYUN 09</div>
+            <h2 className="text-2xl font-bold text-white mb-2 tracking-wide">CANLI YAPBOZ</h2>
+            <p className="text-zinc-300/70 text-sm">
+              Ellerinle yapbozu çöz! Kameranla anı yakala ve parçaları birleştir 🧩📸
+            </p>
+            <div className="mt-4 flex justify-center gap-2">
+              <span className="px-2 py-1 text-[10px] bg-zinc-800 text-[#ccff00] rounded border border-[#ccff00]/30">EL TAKİBİ</span>
+              <span className="px-2 py-1 text-[10px] bg-zinc-800 text-[#ccff00] rounded border border-[#ccff00]/30">ZEKA</span>
+            </div>
+          </div>
+
+          {/* Play Button Hint */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[#ccff00] text-xs tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
             ▶ OYNA
           </div>
         </button>
