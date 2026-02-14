@@ -6,13 +6,10 @@ import * as THREE from 'three';
 import { useFaceDetection } from '../hooks/useFaceDetection';
 
 // ============================================================
-// ⚙️ PERFORMANS AYARLARI (Bunu Değiştir)
+// ⚙️ PERFORMANS AYARLARI
 // ============================================================
-// TRUE: M4 Mac Air, RTX Ekran Kartlı PC'ler (Full Görsel Kalite)
-// FALSE: Eski Mac Mini, Intel UHD Graphics, Eski Laptoplar (Maksimum FPS)
 const HIGH_PERFORMANCE_MODE = false;
 
-// Performans moduna göre segment sayıları (Geometry Complexity)
 const SEGMENTS = HIGH_PERFORMANCE_MODE ? 32 : 12;
 const SPHERE_SEGMENTS = HIGH_PERFORMANCE_MODE ? 32 : 16;
 
@@ -60,7 +57,15 @@ const PLANET_ALIEN_COLORS: Record<PlanetKey, string[]> = {
   venus: ['#f59e0b', '#fbbf24', '#fde047', '#f97316', '#fcd34d'],
 };
 
-// Per-planet science facts
+// ============================================================
+// 📍 FIXED SPAWN SLOTS (ÇÖZÜM 1: IZGARA SİSTEMİ)
+// ============================================================
+// Uzaylıların üst üste binmesini engellemek için sabit koordinatlar
+const SPAWN_SLOTS = [
+  [-1.8, 1.8, 0], [0, 1.8, 0], [1.8, 1.8, 0], // Üst Sıra
+  [-1.8, 0.6, 0], [0, 0.6, 0], [1.8, 0.6, 0]  // Alt Sıra
+];
+
 const PLANET_FACTS: Record<PlanetKey, string[]> = {
   neptune: [
     'Neptün\'de rüzgarlar o kadar hızlıdır ki, Dünya\'daki en hızlı jet uçağını bile geçer! 💨',
@@ -123,11 +128,8 @@ const ALIEN_SIZES = {
   small: { scale: 0.7, bodyRadius: 0.25, bodyHeight: 0.28, points: 300, grabRadius: 0.8 }
 } as const;
 
-const MIN_ALIEN_DISTANCE = 2.2;
+const MIN_ALIEN_DISTANCE = 1.0; // Slot sistemi olduğu için buna pek gerek kalmadı ama güvenlik için kalsın
 const MIN_PORTAL_DISTANCE = 1.2;
-const MAX_X_SPAWN = 2.3;
-const MAX_Y_SPAWN = 2.2;
-const MIN_Y_SPAWN = 0.3;
 
 type AlienSize = keyof typeof ALIEN_SIZES;
 
@@ -158,6 +160,7 @@ const Alien = React.forwardRef<THREE.Group, {
     if (!meshRef.current) return;
 
     if (isRejected) {
+      // Rejection animation
       rejectProgress.current = Math.min(rejectProgress.current + delta * 3, 1);
       const bounce = Math.sin(rejectProgress.current * Math.PI) * 0.8;
       meshRef.current.position.y = basePosition.current.y + bounce;
@@ -173,7 +176,6 @@ const Alien = React.forwardRef<THREE.Group, {
       } else {
         const targetY = basePosition.current.y + Math.sin(state.clock.elapsedTime * 2 + bobOffset) * 0.1;
         // Dampening for smoother movement on low FPS
-        const dampSpeed = 5;
         meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, basePosition.current.x, 0.1);
         meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, targetY, 0.1);
         meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, basePosition.current.z, 0.1);
@@ -191,7 +193,6 @@ const Alien = React.forwardRef<THREE.Group, {
 
   return (
     <group ref={meshRef} position={position}>
-      {/* Grab zone ring */}
       <mesh ref={ringRef}>
         <torusGeometry args={[sizeConfig.grabRadius, 0.03 * sizeConfig.scale, 4, SEGMENTS]} />
         <meshBasicMaterial
@@ -201,7 +202,6 @@ const Alien = React.forwardRef<THREE.Group, {
         />
       </mesh>
 
-      {/* Body - Conditional Material */}
       <mesh>
         <capsuleGeometry args={[sizeConfig.bodyRadius, sizeConfig.bodyHeight, 4, 8]} />
         {HIGH_PERFORMANCE_MODE ? (
@@ -215,13 +215,11 @@ const Alien = React.forwardRef<THREE.Group, {
         )}
       </mesh>
 
-      {/* Planet dot indicator */}
       <mesh position={[0, 0.1 * sizeConfig.scale, sizeConfig.bodyRadius + 0.01]}>
         <circleGeometry args={[0.08 * sizeConfig.scale, 8]} />
         <meshBasicMaterial color={planetColor} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Eyes - Low Poly */}
       <group>
         <mesh position={[-0.15 * sizeConfig.scale, 0.2 * sizeConfig.scale, 0.28 * sizeConfig.scale]}>
           <sphereGeometry args={[0.1 * sizeConfig.scale, 8, 8]} />
@@ -241,7 +239,6 @@ const Alien = React.forwardRef<THREE.Group, {
         </mesh>
       </group>
 
-      {/* Antenna */}
       <mesh position={[0, 0.55 * sizeConfig.scale, 0]}>
         <cylinderGeometry args={[0.03 * sizeConfig.scale, 0.03 * sizeConfig.scale, 0.25 * sizeConfig.scale, 4]} />
         <meshBasicMaterial color={color} />
@@ -251,7 +248,6 @@ const Alien = React.forwardRef<THREE.Group, {
         <meshBasicMaterial color={planetColor} />
       </mesh>
 
-      {/* Lights only in High Perf Mode */}
       {HIGH_PERFORMANCE_MODE && isNearHand && !isGrabbed && (
         <pointLight position={[0, 0, 0]} color="#fbbf24" intensity={3} distance={2} />
       )}
@@ -337,7 +333,6 @@ const PlanetPortal = ({
   const beamRef = useRef<THREE.Mesh>(null);
   const particlesRef = useRef<THREE.Points>(null);
 
-  // Reduce particles on low perf
   const particleCount = HIGH_PERFORMANCE_MODE ? 16 : 6;
 
   const particlePositions = useMemo(() => {
@@ -385,7 +380,6 @@ const PlanetPortal = ({
 
   return (
     <group position={position}>
-      {/* Planet sphere */}
       <mesh ref={planetRef}>
         <sphereGeometry args={[1.0, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
         {HIGH_PERFORMANCE_MODE ? (
@@ -399,7 +393,6 @@ const PlanetPortal = ({
         )}
       </mesh>
 
-      {/* Rings */}
       <mesh ref={ring1Ref} rotation={[Math.PI / 6, 0, 0]}>
         <ringGeometry args={[1.1, 1.3, SEGMENTS]} />
         {HIGH_PERFORMANCE_MODE ? (
@@ -426,7 +419,6 @@ const PlanetPortal = ({
         />
       </mesh>
 
-      {/* Orbit particles */}
       <points ref={particlesRef}>
         <bufferGeometry>
           <bufferAttribute
@@ -445,13 +437,11 @@ const PlanetPortal = ({
         />
       </points>
 
-      {/* Beam */}
       <mesh ref={beamRef} position={[0, 3, 0]} visible={false}>
         <cylinderGeometry args={[0.1, 0.4, 6, 8, 1, true]} />
         <meshBasicMaterial color={planet.color} transparent opacity={0.3} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Text */}
       <Text
         position={[0, 1.7, 0]}
         fontSize={0.3}
@@ -464,7 +454,6 @@ const PlanetPortal = ({
         ×{deliveryCount}
       </Text>
 
-      {/* Light only on High Perf */}
       {HIGH_PERFORMANCE_MODE && (
         <pointLight
           position={[0, 0, 0]}
@@ -597,7 +586,6 @@ const PinchIndicator = ({
         <torusGeometry args={[0.8, 0.03, 4, 16]} />
         <meshBasicMaterial color={isPinching ? '#fbbf24' : '#00ff00'} transparent opacity={0.4} />
       </mesh>
-      {/* Lights only High Perf */}
       {HIGH_PERFORMANCE_MODE && (
         <pointLight color={isPinching ? '#fbbf24' : '#00ff00'} intensity={isPinching ? 5 : 2} distance={3} />
       )}
@@ -671,32 +659,28 @@ const GameScene = ({
 
   const PLANET_KEYS: PlanetKey[] = ['neptune', 'mars', 'venus'];
 
+  // ÇÖZÜM 1: SLOT BASED SPAWN
+  // Rastgele spawn yerine, önceden belirlenmiş boş slotlardan birini seçer.
   const generateSpawnPosition = useCallback((existingPositions: [number, number, number][] = []): [number, number, number] => {
-    let attempts = 0;
-    while (attempts < 100) {
-      const x = (Math.random() * 2 - 1) * MAX_X_SPAWN;
-      const y = MIN_Y_SPAWN + Math.random() * (MAX_Y_SPAWN - MIN_Y_SPAWN);
-      const z = 0;
+    // Slotları karıştır
+    const shuffledSlots = [...SPAWN_SLOTS].sort(() => 0.5 - Math.random());
 
-      let tooCloseToPortal = false;
-      for (const pk of PLANET_KEYS) {
-        const pp = PLANETS[pk].position;
-        const portalDist = Math.sqrt((x - pp[0]) ** 2 + (y - pp[1]) ** 2);
-        if (portalDist < MIN_PORTAL_DISTANCE + PLANETS[pk].portalRadius) {
-          tooCloseToPortal = true;
-          break;
-        }
-      }
-      if (tooCloseToPortal) { attempts++; continue; }
+    // Boş olan ilk slotu bul
+    for (const slot of shuffledSlots) {
+      // Bu slota yakın bir uzaylı var mı?
+      const isOccupied = existingPositions.some(pos => {
+        // Basit bir mesafe kontrolü (slotlar arası mesafe zaten geniş ama yine de kontrol edelim)
+        const dx = pos[0] - slot[0];
+        const dy = pos[1] - slot[1];
+        return Math.sqrt(dx * dx + dy * dy) < 0.5; // Çok yakınsa dolu say
+      });
 
-      let tooClose = false;
-      for (const pos of existingPositions) {
-        const dist = Math.sqrt((x - pos[0]) ** 2 + (y - pos[1]) ** 2);
-        if (dist < MIN_ALIEN_DISTANCE) { tooClose = true; break; }
+      if (!isOccupied) {
+        return [slot[0], slot[1], slot[2]] as [number, number, number];
       }
-      if (!tooClose) return [x, y, z];
-      attempts++;
     }
+
+    // Eğer tüm slotlar doluysa (ki oyun mantığında 6'dan fazla uzaylı olmamalı), ortaya at.
     return [0, 1.5, 0];
   }, []);
 
@@ -724,6 +708,7 @@ const GameScene = ({
 
   useEffect(() => {
     const initialAliens: typeof aliens = [];
+    // 6 slot var, 4 tane spawn edelim.
     for (let i = 0; i < 4; i++) {
       initialAliens.push(spawnNewAlien(initialAliens));
     }
@@ -779,6 +764,7 @@ const GameScene = ({
       }
       const currentlyPinching = pinchActiveRef.current;
 
+      // 1. Highlight nearest alien if not grabbing anything
       if (!currentlyPinching || grabbedAlienId === null) {
         let closestAlienId: number | null = null;
         let closestDist = Infinity;
@@ -800,6 +786,7 @@ const GameScene = ({
         setNearAlienId(closestAlienId);
       }
 
+      // 2. Check portals
       let nearestPortal: PlanetKey | null = null;
       let nearestPortalDist = Infinity;
       PLANET_KEYS.forEach(pk => {
@@ -812,12 +799,15 @@ const GameScene = ({
       });
       setNearPortal(nearestPortal);
 
+      // 3. Auto Delivery Logic
       let didAutoDeliver = false;
-      if (currentlyPinching && grabbedAlienId !== null && nearestPortal !== null) {
+      // ÇÖZÜM 2 İÇİN GÜNCELLEME: Sadece doğru portalda işlem yap
+      if (grabbedAlienId !== null && nearestPortal !== null) {
         const grabbedAlien = aliens.find(a => a.id === grabbedAlienId);
         if (grabbedAlien) {
-          didAutoDeliver = true;
           if (grabbedAlien.planet === nearestPortal) {
+            // DOĞRU PORTAL: Teslim et ve bırak
+            didAutoDeliver = true;
             setScore(prev => prev + grabbedAlien.points);
             onPlanetDelivery(nearestPortal);
             setFallingAliensByPortal(prev => ({
@@ -833,18 +823,19 @@ const GameScene = ({
               const remaining = prev.filter(a => a.id !== grabbedAlienId);
               return [...remaining, spawnNewAlien(remaining)];
             });
+            setGrabbedAlienId(null);
           } else {
-            onWrongPortal(nearestPortal);
-            const gid = grabbedAlienId;
-            setAliens(prev => prev.map(a => a.id === gid ? { ...a, grabbed: false, rejected: true } : a));
-            setTimeout(() => {
-              setAliens(prev => prev.map(a => a.id === gid ? { ...a, rejected: false } : a));
-            }, 600);
+            // YANLIŞ PORTAL: Uyar ama BIRAKMA (Absolute Lock)
+            // didAutoDeliver = false kalsın ki aşağıdaki release bloğuna girmesin
+            // Sadece kullanıcıyı uyar
+            if (currentlyPinching) {
+              onWrongPortal(nearestPortal);
+            }
           }
-          setGrabbedAlienId(null);
         }
       }
 
+      // 4. Grabbing Logic (Pinch Start)
       if (!didAutoDeliver && currentlyPinching && !prevPinchRef.current) {
         if (grabbedAlienId === null) {
           let closestId: number | null = null;
@@ -868,10 +859,10 @@ const GameScene = ({
         }
       }
 
-      if (!didAutoDeliver && !currentlyPinching && prevPinchRef.current && grabbedAlienId !== null) {
-        setAliens(prev => prev.map(a => a.id === grabbedAlienId ? { ...a, grabbed: false } : a));
-        setGrabbedAlienId(null);
-      }
+      // ÇÖZÜM 2: ABSOLUTE LOCK (MUTLAK KİLİTLEME)
+      // Eski kod burada "if (!currentlyPinching ...)" olduğunda uzaylıyı serbest bırakıyordu.
+      // BU BLOĞU SİLDİK. Artık elini açsan da uzaylı yapışık kalır.
+      // Bırakmanın TEK yolu yukarıdaki "didAutoDeliver" bloğudur.
 
       prevPinchRef.current = currentlyPinching;
       setIsPinching(currentlyPinching);
@@ -883,6 +874,9 @@ const GameScene = ({
         setNearPortal(null);
         pinchActiveRef.current = false;
         prevPinchRef.current = false;
+        // El görüntüden çıkarsa düşsün mü? 
+        // Kullanıcı "Absolute Lock" dediği için burada da düşürmeyebiliriz ama 
+        // el kaybolunca oyun kilitlenmesin diye burayı bırakıyorum.
         if (grabbedAlienId !== null) {
           setAliens(prev => prev.map(a => a.id === grabbedAlienId ? { ...a, grabbed: false } : a));
           setGrabbedAlienId(null);
@@ -896,7 +890,6 @@ const GameScene = ({
 
   return (
     <>
-      {/* Lighting: Conditional */}
       {HIGH_PERFORMANCE_MODE ? (
         <>
           <ambientLight intensity={0.6} />
@@ -904,7 +897,7 @@ const GameScene = ({
           <pointLight position={[0, 3, 0]} color="#22c55e" intensity={0.3} />
         </>
       ) : (
-        <ambientLight intensity={1.5} /> // Brighter ambient for basic materials
+        <ambientLight intensity={1.5} />
       )}
 
       <Arena />
@@ -972,6 +965,8 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
   const deliveryFactTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const planetFactIndexRef = useRef<Record<PlanetKey, number>>({ neptune: 0, mars: 0, venus: 0 });
   const [showNarrative, setShowNarrative] = useState(false);
+  const [showIntroVideo, setShowIntroVideo] = useState(false);
+  const introVideoRef = useRef<HTMLVideoElement>(null);
   const [gestureText, setGestureText] = useState('El Bekleniyor');
   const handHoldTimerRef = useRef<NodeJS.Timeout | null>(null);
   const handHoldStartRef = useRef<number>(0);
@@ -981,7 +976,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          // Force lower resolution on low perf machines to help AI
           video: {
             width: { ideal: HIGH_PERFORMANCE_MODE ? 1280 : 640 },
             height: { ideal: HIGH_PERFORMANCE_MODE ? 720 : 480 },
@@ -1061,6 +1055,29 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     }, 3000);
   }, []);
 
+  const handleIntroVideoEnd = useCallback(() => {
+    setShowIntroVideo(false);
+    startGame();
+  }, [startGame]);
+
+  const handleSkipIntro = useCallback(() => {
+    if (introVideoRef.current) {
+      introVideoRef.current.pause();
+    }
+    setShowIntroVideo(false);
+    startGame();
+  }, [startGame]);
+
+  useEffect(() => {
+    if (showIntroVideo && introVideoRef.current) {
+      introVideoRef.current.currentTime = 0;
+      introVideoRef.current.play().catch(() => {
+        // Video oynatılamadıysa direkt oyunu başlat
+        handleIntroVideoEnd();
+      });
+    }
+  }, [showIntroVideo, handleIntroVideoEnd]);
+
   const handleWrongPortal = useCallback((planet: PlanetKey) => {
     const planetName = PLANETS[planet].name;
     setWrongPortalMsg(`Hmm! Bu uzaylı buraya ait değil! ${PLANETS[planet].emoji} ${planetName}'e götür!`);
@@ -1085,7 +1102,8 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
         if (progress >= 100) {
           setHandHoldProgress(0);
           handHoldStartRef.current = 0;
-          startGame();
+          setShowInstructions(false);
+          setShowIntroVideo(true);
         }
       } else {
         handHoldStartRef.current = 0;
@@ -1104,7 +1122,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden">
-      {/* Background Video */}
       <video
         ref={videoRef}
         className="absolute top-0 left-0 w-full h-full object-cover opacity-70 scale-x-[-1]"
@@ -1113,16 +1130,14 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/40 pointer-events-none"></div>
 
-      {/* 3D Game Canvas */}
       {isReady && (
         <div className="absolute inset-0">
           <Canvas
             camera={{ position: [0, 0, 8], fov: 60 }}
-            // PERFORMANCE: Limit pixel ratio on low perf devices to avoid huge GPU load
             dpr={HIGH_PERFORMANCE_MODE ? [1, 1.5] : [1, 1]}
             gl={{
               alpha: true,
-              antialias: HIGH_PERFORMANCE_MODE, // Disable AA on low perf
+              antialias: HIGH_PERFORMANCE_MODE,
               powerPreference: 'high-performance'
             }}
           >
@@ -1136,7 +1151,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
               planetDeliveryCounts={planetDeliveryCounts}
             />
 
-            {/* PERFORMANCE: Only render post-processing effects on High Perf Mode */}
             {HIGH_PERFORMANCE_MODE && (
               <EffectComposer multisampling={0}>
                 <Bloom luminanceThreshold={0.3} intensity={0.8} levels={3} />
@@ -1147,9 +1161,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* UI Overlay */}
       <div className="absolute inset-0 pointer-events-none">
-        {/* Top Bar */}
         <div className="flex justify-between items-start p-6">
           <button
             onClick={onBack}
@@ -1177,7 +1189,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Planet Score Row */}
         {gameActive && (
           <div className="absolute top-24 left-1/2 transform -translate-x-1/2 flex gap-4">
             {(['neptune', 'mars', 'venus'] as PlanetKey[]).map(pk => {
@@ -1194,7 +1205,89 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Space Narrative */}
+        {showIntroVideo && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center"
+            style={{
+              background: 'radial-gradient(ellipse at center, rgba(0,0,30,0.95) 0%, rgba(0,0,0,0.98) 100%)',
+            }}
+          >
+            {/* Animated stars background */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {Array.from({ length: 40 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute rounded-full animate-pulse"
+                  style={{
+                    width: `${Math.random() * 3 + 1}px`,
+                    height: `${Math.random() * 3 + 1}px`,
+                    top: `${Math.random() * 100}%`,
+                    left: `${Math.random() * 100}%`,
+                    backgroundColor: ['#fff', '#60a5fa', '#fbbf24', '#a78bfa'][Math.floor(Math.random() * 4)],
+                    animationDelay: `${Math.random() * 3}s`,
+                    animationDuration: `${Math.random() * 2 + 1}s`,
+                    opacity: Math.random() * 0.8 + 0.2,
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className="relative flex flex-col items-center gap-4 w-full h-full px-6 py-4 justify-center">
+              {/* Title */}
+              <div className="text-center animate-bounce">
+                <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 tracking-widest">
+                  🌌 UZAY GÖREVİ BAŞLIYOR
+                </p>
+              </div>
+
+              {/* Video container */}
+              <div
+                className="relative rounded-3xl overflow-hidden shadow-2xl w-full flex-1 max-h-[80vh]"
+                style={{
+                  border: '3px solid transparent',
+                  backgroundImage: 'linear-gradient(#000, #000), linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899, #06b6d4)',
+                  backgroundOrigin: 'border-box',
+                  backgroundClip: 'padding-box, border-box',
+                  boxShadow: '0 0 40px rgba(139, 92, 246, 0.4), 0 0 80px rgba(6, 182, 212, 0.2), inset 0 0 30px rgba(139, 92, 246, 0.1)',
+                }}
+              >
+                {/* Glow overlay on top corners */}
+                <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-cyan-500/20 to-transparent rounded-br-full pointer-events-none z-10" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-purple-500/20 to-transparent rounded-bl-full pointer-events-none z-10" />
+
+                <video
+                  ref={introVideoRef}
+                  className="w-full h-full object-cover"
+                  playsInline
+                  onEnded={handleIntroVideoEnd}
+                  src="/videos/uzaylı.mp4"
+                />
+
+                {/* Bottom gradient overlay */}
+                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+              </div>
+
+              {/* Subtitle text */}
+              <p className="text-lg text-purple-200/80 font-semibold text-center">
+                🚀 Uzaylılar seni bekliyor! Onları evlerine göndermeye hazır mısın?
+              </p>
+
+              {/* Skip button */}
+              <button
+                onClick={handleSkipIntro}
+                className="pointer-events-auto px-8 py-3 rounded-2xl font-bold text-lg transition-all transform hover:scale-105 active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(139,92,246,0.3), rgba(6,182,212,0.3))',
+                  border: '1px solid rgba(139,92,246,0.5)',
+                  color: '#e0e7ff',
+                  boxShadow: '0 0 20px rgba(139,92,246,0.2)',
+                }}
+              >
+                ⏭️ Atla ve Oyuna Başla
+              </button>
+            </div>
+          </div>
+        )}
+
         {showNarrative && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center animate-fade-in-out">
@@ -1211,7 +1304,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Wrong portal message */}
         {wrongPortalMsg && (
           <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
             <div className="bg-orange-900/80 backdrop-blur border border-orange-500 px-6 py-3 rounded-xl text-orange-200 font-semibold text-lg text-center max-w-md">
@@ -1220,7 +1312,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Science fact popup */}
         {showingFact && deliveryFact && (
           <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-auto"
             style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
@@ -1249,7 +1340,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* Instructions / End Screen */}
         {!gameActive && isReady && showInstructions && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-auto"
             style={{ background: 'linear-gradient(135deg, rgba(0,0,20,0.92), rgba(10,0,40,0.92))' }}
@@ -1318,7 +1408,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
               )}
 
               <button
-                onClick={startGame}
+                onClick={() => { setShowInstructions(false); setShowIntroVideo(true); }}
                 className="w-full py-6 text-3xl font-black rounded-2xl transition-all transform hover:scale-105 active:scale-95"
                 style={{
                   background: 'linear-gradient(135deg, #16a34a, #059669)',
@@ -1332,7 +1422,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         )}
 
-        {/* AI HUD Panel */}
         <div className="absolute bottom-6 left-6">
           <div className="bg-black/70 backdrop-blur border border-blue-500/40 px-4 py-3 rounded-lg min-w-40">
             <div className="text-blue-400 text-xs tracking-widest font-bold mb-2">🤖 YAPAY ZEKA AKTİF</div>
@@ -1353,22 +1442,20 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Grab hint */}
         {gameActive && (
           <div className="absolute bottom-6 right-6">
             <div className="bg-black/60 backdrop-blur border border-yellow-500/30 px-4 py-2 rounded-lg">
               <div className="text-yellow-400 text-xs tracking-widest">İPUCU</div>
               <div className="text-yellow-200 text-sm">
                 👌 Parmakları birleştir = TUT<br />
-                ✋ Parmakları aç = BIRAK<br />
-                <span className="text-yellow-400">🎨 Rengi eşleştir!</span>
+                ✋ Doğru Gezegene Götür<br />
+                <span className="text-yellow-400">🎨 Bırakmana Gerek Yok!</span>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Loading State */}
       {isLoading && !cameraError && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black">
           <div className="flex flex-col items-center">
@@ -1379,7 +1466,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* Camera Error */}
       {cameraError && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90">
           <div className="p-8 border border-red-500 rounded max-w-md text-center">
