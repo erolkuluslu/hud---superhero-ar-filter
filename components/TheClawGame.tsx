@@ -11,7 +11,11 @@ import { useFaceDetection } from '../hooks/useFaceDetection';
 const HIGH_PERFORMANCE_MODE = false;
 
 const SEGMENTS = HIGH_PERFORMANCE_MODE ? 32 : 12;
-const SPHERE_SEGMENTS = HIGH_PERFORMANCE_MODE ? 32 : 16;
+const SPHERE_SEGMENTS = HIGH_PERFORMANCE_MODE ? 64 : 32;
+
+// --- PRO LOCK SETTINGS ---
+const LOCK_THRESHOLD = 0.25; // Elin bir önceki kareden maksimum sapma miktarı (Takip hassasiyeti)
+const LOST_TRACKING_TIMEOUT = 500; // El kaybedilirse kaç ms sonra kilit sıfırlansın
 
 interface TheClawGameProps {
   onBack: () => void;
@@ -58,9 +62,8 @@ const PLANET_ALIEN_COLORS: Record<PlanetKey, string[]> = {
 };
 
 // ============================================================
-// 📍 FIXED SPAWN SLOTS (ÇÖZÜM 1: IZGARA SİSTEMİ)
+// 📍 FIXED SPAWN SLOTS
 // ============================================================
-// Uzaylıların üst üste binmesini engellemek için sabit koordinatlar
 const SPAWN_SLOTS = [
   [-1.8, 1.8, 0], [0, 1.8, 0], [1.8, 1.8, 0], // Üst Sıra
   [-1.8, 0.6, 0], [0, 0.6, 0], [1.8, 0.6, 0]  // Alt Sıra
@@ -128,13 +131,10 @@ const ALIEN_SIZES = {
   small: { scale: 0.7, bodyRadius: 0.25, bodyHeight: 0.28, points: 300, grabRadius: 0.8 }
 } as const;
 
-const MIN_ALIEN_DISTANCE = 1.0; // Slot sistemi olduğu için buna pek gerek kalmadı ama güvenlik için kalsın
-const MIN_PORTAL_DISTANCE = 1.2;
-
 type AlienSize = keyof typeof ALIEN_SIZES;
 
 // ============================================================
-// ALIEN COMPONENT (Optimized)
+// ALIEN COMPONENT
 // ============================================================
 const Alien = React.forwardRef<THREE.Group, {
   position: [number, number, number],
@@ -160,7 +160,6 @@ const Alien = React.forwardRef<THREE.Group, {
     if (!meshRef.current) return;
 
     if (isRejected) {
-      // Rejection animation
       rejectProgress.current = Math.min(rejectProgress.current + delta * 3, 1);
       const bounce = Math.sin(rejectProgress.current * Math.PI) * 0.8;
       meshRef.current.position.y = basePosition.current.y + bounce;
@@ -169,13 +168,11 @@ const Alien = React.forwardRef<THREE.Group, {
     } else {
       rejectProgress.current = 0;
       if (isGrabbed && grabbedPosition) {
-        // Smooth lerp is better for performance than stiff movement
         meshRef.current.position.lerp(grabbedPosition, 0.5);
         meshRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 10) * 0.3;
         meshRef.current.scale.setScalar(1.3);
       } else {
         const targetY = basePosition.current.y + Math.sin(state.clock.elapsedTime * 2 + bobOffset) * 0.1;
-        // Dampening for smoother movement on low FPS
         meshRef.current.position.x = THREE.MathUtils.lerp(meshRef.current.position.x, basePosition.current.x, 0.1);
         meshRef.current.position.y = THREE.MathUtils.lerp(meshRef.current.position.y, targetY, 0.1);
         meshRef.current.position.z = THREE.MathUtils.lerp(meshRef.current.position.z, basePosition.current.z, 0.1);
@@ -333,6 +330,17 @@ const PlanetPortal = ({
   const beamRef = useRef<THREE.Mesh>(null);
   const particlesRef = useRef<THREE.Points>(null);
 
+  useEffect(() => {
+    if (texture) {
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(1, 1);
+      texture.offset.set(0, 0);
+      texture.center.set(0.5, 0.5);
+      texture.needsUpdate = true;
+    }
+  }, [texture]);
+
   const particleCount = HIGH_PERFORMANCE_MODE ? 16 : 6;
 
   const particlePositions = useMemo(() => {
@@ -378,18 +386,44 @@ const PlanetPortal = ({
     }
   });
 
+  const getBackgroundColor = () => {
+    switch (planetKey) {
+      case 'neptune': return '#1e3a8a';
+      case 'mars': return '#7f1d1d';
+      case 'venus': return '#78350f';
+      default: return planet.color;
+    }
+  };
+
   return (
     <group position={position}>
+      <mesh>
+        <sphereGeometry args={[0.99, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
+        <meshBasicMaterial color={getBackgroundColor()} />
+      </mesh>
+
       <mesh ref={planetRef}>
         <sphereGeometry args={[1.0, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
         {HIGH_PERFORMANCE_MODE ? (
           <meshStandardMaterial
             map={texture}
+            color={planet.color}
             emissive={planet.color}
             emissiveIntensity={isNearHand ? 0.5 : 0.15}
+            roughness={0.8}
+            metalness={0.2}
+            toneMapped={false}
+            transparent={false}
+            side={THREE.FrontSide}
           />
         ) : (
-          <meshBasicMaterial map={texture} />
+          <meshBasicMaterial
+            map={texture}
+            color={planet.color}
+            toneMapped={false}
+            transparent={false}
+            side={THREE.FrontSide}
+          />
         )}
       </mesh>
 
@@ -477,13 +511,13 @@ const PlanetPortal = ({
 };
 
 // ============================================================
-// HAND SKELETON
+// HAND SKELETON (PRO UPDATE: Sadece kilitli eli çizer)
 // ============================================================
 const HandSkeleton = ({
-  handLandmarks,
+  activeHand, // Değişiklik: Tüm elleri değil, sadece seçilen eli alır
   transform
 }: {
-  handLandmarks: any[] | null,
+  activeHand: any | null,
   transform: (lm: any) => THREE.Vector3
 }) => {
   const pointsRef = useRef<THREE.Points>(null);
@@ -504,12 +538,16 @@ const HandSkeleton = ({
   }, []);
 
   useFrame(() => {
-    if (!handLandmarks || handLandmarks.length === 0) {
+    // Sadece aktif el varsa çizim yap
+    if (!activeHand) {
       if (pointsRef.current) pointsRef.current.visible = false;
       if (linesRef.current) linesRef.current.visible = false;
       return;
     }
-    const hand = handLandmarks[0];
+    
+    // activeHand burada tek bir el objesidir, dizi değil.
+    const hand = activeHand;
+
     if (pointsRef.current) {
       pointsRef.current.visible = true;
       const positions = pointsRef.current.geometry.attributes.position.array as Float32Array;
@@ -657,30 +695,24 @@ const GameScene = ({
   });
   const alienRefs = useRef<Map<number, THREE.Group>>(new Map());
 
+  // --- PRO LOCKING STATE ---
+  const lockedHandCenterRef = useRef<THREE.Vector3 | null>(null);
+  const activeHandRef = useRef<any | null>(null); // UI'a aktarmak için referans
+
   const PLANET_KEYS: PlanetKey[] = ['neptune', 'mars', 'venus'];
 
-  // ÇÖZÜM 1: SLOT BASED SPAWN
-  // Rastgele spawn yerine, önceden belirlenmiş boş slotlardan birini seçer.
   const generateSpawnPosition = useCallback((existingPositions: [number, number, number][] = []): [number, number, number] => {
-    // Slotları karıştır
     const shuffledSlots = [...SPAWN_SLOTS].sort(() => 0.5 - Math.random());
-
-    // Boş olan ilk slotu bul
     for (const slot of shuffledSlots) {
-      // Bu slota yakın bir uzaylı var mı?
       const isOccupied = existingPositions.some(pos => {
-        // Basit bir mesafe kontrolü (slotlar arası mesafe zaten geniş ama yine de kontrol edelim)
         const dx = pos[0] - slot[0];
         const dy = pos[1] - slot[1];
-        return Math.sqrt(dx * dx + dy * dy) < 0.5; // Çok yakınsa dolu say
+        return Math.sqrt(dx * dx + dy * dy) < 0.5;
       });
-
       if (!isOccupied) {
         return [slot[0], slot[1], slot[2]] as [number, number, number];
       }
     }
-
-    // Eğer tüm slotlar doluysa (ki oyun mantığında 6'dan fazla uzaylı olmamalı), ortaya at.
     return [0, 1.5, 0];
   }, []);
 
@@ -708,7 +740,6 @@ const GameScene = ({
 
   useEffect(() => {
     const initialAliens: typeof aliens = [];
-    // 6 slot var, 4 tane spawn edelim.
     for (let i = 0; i < 4; i++) {
       initialAliens.push(spawnNewAlien(initialAliens));
     }
@@ -731,9 +762,71 @@ const GameScene = ({
     z: (hand[4].z + hand[8].z) / 2,
   }), []);
 
+  // --- PRO HAND SELECTION LOGIC ---
+  const getLockedHand = useCallback((rawHands: any[]) => {
+    if (!rawHands || rawHands.length === 0) {
+      lockedHandCenterRef.current = null;
+      return null;
+    }
+
+    // 1. Zaten kilitli bir el varsa, ona yakın olanı ara (Kararlılık/Hysteresis)
+    if (lockedHandCenterRef.current) {
+      let bestHand = null;
+      let minDistance = Infinity;
+
+      for (const hand of rawHands) {
+        // Elin merkezi (Orta parmak kökü)
+        const handCenter = new THREE.Vector3(hand[9].x, hand[9].y, hand[9].z);
+        const distance = handCenter.distanceTo(lockedHandCenterRef.current);
+
+        // Kilitli ele bu threshold kadar yakın olanları aday kabul et
+        if (distance < LOCK_THRESHOLD && distance < minDistance) {
+          minDistance = distance;
+          bestHand = hand;
+        }
+      }
+
+      if (bestHand) {
+        lockedHandCenterRef.current = new THREE.Vector3(bestHand[9].x, bestHand[9].y, bestHand[9].z);
+        return bestHand;
+      }
+    }
+
+    // 2. Kilitli el yoksa veya kaybolduysa: Kameraya EN YAKIN (Z değeri en düşük) eli bul
+    // Z ekseni MediaPipe'ta derinliktir. Ne kadar küçükse kameraya o kadar yakındır (genellikle).
+    let closestZHand = null;
+    let minZ = Infinity;
+
+    for (const hand of rawHands) {
+      // 9. nokta (orta parmak kökü) elin genel derinliği için iyi bir referans
+      const zDepth = Math.abs(hand[9].z); 
+      
+      if (zDepth < minZ) {
+        minZ = zDepth;
+        closestZHand = hand;
+      }
+    }
+
+    if (closestZHand) {
+      lockedHandCenterRef.current = new THREE.Vector3(closestZHand[9].x, closestZHand[9].y, closestZHand[9].z);
+      return closestZHand;
+    }
+
+    return null;
+  }, []);
+
   useFrame(() => {
     if (!gameActive) return;
-    const hands = handLandmarksRef.current;
+
+    // --- PRO LOGIC START ---
+    const rawHands = handLandmarksRef.current;
+    
+    // Akıllı filtreleme ile sadece doğru eli seç
+    const hand = getLockedHand(rawHands);
+    
+    // UI render için ref güncelle (Skeleton buna bakacak)
+    activeHandRef.current = hand; 
+
     const now = Date.now();
 
     if (showingFact) {
@@ -748,9 +841,9 @@ const GameScene = ({
       return;
     }
 
-    if (hands && hands.length > 0) {
+    // "hands && hands.length > 0" yerine artık "hand" (tekil) kontrol ediyoruz
+    if (hand) {
       lastHandTimeRef.current = now;
-      const hand = hands[0];
       const pinchPoint = getPinchPoint(hand);
       const worldPos = transformLandmark(pinchPoint);
       setPinchPosition(worldPos);
@@ -764,7 +857,7 @@ const GameScene = ({
       }
       const currentlyPinching = pinchActiveRef.current;
 
-      // 1. Highlight nearest alien if not grabbing anything
+      // 1. Highlight nearest alien
       if (!currentlyPinching || grabbedAlienId === null) {
         let closestAlienId: number | null = null;
         let closestDist = Infinity;
@@ -801,12 +894,10 @@ const GameScene = ({
 
       // 3. Auto Delivery Logic
       let didAutoDeliver = false;
-      // ÇÖZÜM 2 İÇİN GÜNCELLEME: Sadece doğru portalda işlem yap
       if (grabbedAlienId !== null && nearestPortal !== null) {
         const grabbedAlien = aliens.find(a => a.id === grabbedAlienId);
         if (grabbedAlien) {
           if (grabbedAlien.planet === nearestPortal) {
-            // DOĞRU PORTAL: Teslim et ve bırak
             didAutoDeliver = true;
             setScore(prev => prev + grabbedAlien.points);
             onPlanetDelivery(nearestPortal);
@@ -825,9 +916,6 @@ const GameScene = ({
             });
             setGrabbedAlienId(null);
           } else {
-            // YANLIŞ PORTAL: Uyar ama BIRAKMA (Absolute Lock)
-            // didAutoDeliver = false kalsın ki aşağıdaki release bloğuna girmesin
-            // Sadece kullanıcıyı uyar
             if (currentlyPinching) {
               onWrongPortal(nearestPortal);
             }
@@ -835,7 +923,7 @@ const GameScene = ({
         }
       }
 
-      // 4. Grabbing Logic (Pinch Start)
+      // 4. Grabbing Logic
       if (!didAutoDeliver && currentlyPinching && !prevPinchRef.current) {
         if (grabbedAlienId === null) {
           let closestId: number | null = null;
@@ -859,24 +947,20 @@ const GameScene = ({
         }
       }
 
-      // ÇÖZÜM 2: ABSOLUTE LOCK (MUTLAK KİLİTLEME)
-      // Eski kod burada "if (!currentlyPinching ...)" olduğunda uzaylıyı serbest bırakıyordu.
-      // BU BLOĞU SİLDİK. Artık elini açsan da uzaylı yapışık kalır.
-      // Bırakmanın TEK yolu yukarıdaki "didAutoDeliver" bloğudur.
-
       prevPinchRef.current = currentlyPinching;
       setIsPinching(currentlyPinching);
     } else {
-      if (now - lastHandTimeRef.current > 300) {
+      // El kaybedilirse (timeout süresince bekle)
+      if (now - lastHandTimeRef.current > LOST_TRACKING_TIMEOUT) {
         setPinchPosition(null);
         setIsPinching(false);
         setNearAlienId(null);
         setNearPortal(null);
         pinchActiveRef.current = false;
         prevPinchRef.current = false;
-        // El görüntüden çıkarsa düşsün mü? 
-        // Kullanıcı "Absolute Lock" dediği için burada da düşürmeyebiliriz ama 
-        // el kaybolunca oyun kilitlenmesin diye burayı bırakıyorum.
+        activeHandRef.current = null; // Skeleton'u gizle
+        lockedHandCenterRef.current = null; // Kilidi tamamen aç
+
         if (grabbedAlienId !== null) {
           setAliens(prev => prev.map(a => a.id === grabbedAlienId ? { ...a, grabbed: false } : a));
           setGrabbedAlienId(null);
@@ -940,7 +1024,8 @@ const GameScene = ({
         />
       ))}
 
-      <HandSkeleton handLandmarks={handLandmarksRef.current} transform={transformLandmark} />
+      {/* activeHandRef.current artık tekil el verisidir */}
+      <HandSkeleton activeHand={activeHandRef.current} transform={transformLandmark} />
       <PinchIndicator position={pinchPosition} isPinching={isPinching} />
     </>
   );
@@ -1013,15 +1098,28 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      // Burada sadece bilgi amaçlı gesture text güncelliyoruz
+      // Oyunun ana mantığı GameScene içinde
       const hands = handLandmarksRef.current;
       if (!hands || hands.length === 0) {
         setGestureText('El Bekleniyor');
         return;
       }
-      const hand = hands[0];
-      if (!hand || hand.length < 21) return;
-      const thumbTip = hand[4];
-      const indexTip = hand[8];
+      
+      // NOT: Burada da kilitleme mantığı uygulanabilir ama UI bildirimi için
+      // en yakın eli göstermek yeterli.
+      // Basitçe en yakın eli bul:
+      let closestHand = hands[0];
+      let minZ = Infinity;
+      hands.forEach(h => {
+        if (Math.abs(h[9].z) < minZ) {
+          minZ = Math.abs(h[9].z);
+          closestHand = h;
+        }
+      });
+
+      const thumbTip = closestHand[4];
+      const indexTip = closestHand[8];
       const dist = Math.sqrt((thumbTip.x - indexTip.x) ** 2 + (thumbTip.y - indexTip.y) ** 2);
       setGestureText(dist < 0.08 ? 'Tutma Algılandı' : 'El Algılandı');
     }, 100);
@@ -1072,7 +1170,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     if (showIntroVideo && introVideoRef.current) {
       introVideoRef.current.currentTime = 0;
       introVideoRef.current.play().catch(() => {
-        // Video oynatılamadıysa direkt oyunu başlat
         handleIntroVideoEnd();
       });
     }
@@ -1094,10 +1191,23 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
     const checkHandHold = setInterval(() => {
       const hands = handLandmarksRef.current;
       const hasHand = hands && hands.length > 0;
+      
+      // INTRO EKRANI İÇİN DE EN YAKIN ELİ SEÇ
       if (hasHand) {
+        let bestHand = hands[0];
+        // Sadece kameraya en yakın eli dikkate al (Z-Sorting)
+        // Başkası uzaktan el sallarsa başlatmasın
+        let minZ = Infinity;
+        hands.forEach(h => {
+          if (Math.abs(h[9].z) < minZ) {
+            minZ = Math.abs(h[9].z);
+            bestHand = h;
+          }
+        });
+
         if (handHoldStartRef.current === 0) handHoldStartRef.current = Date.now();
         const elapsed = Date.now() - handHoldStartRef.current;
-        const progress = Math.min((elapsed / 3000) * 100, 100);
+        const progress = Math.min((elapsed / 2000) * 100, 100); // 2 saniye (Kullanıcı isteği üzerine)
         setHandHoldProgress(progress);
         if (progress >= 100) {
           setHandHoldProgress(0);
@@ -1191,7 +1301,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
 
         {gameActive && (
           <div className="absolute top-24 left-1/2 transform -translate-x-1/2 flex gap-4">
-            {(['neptune', 'mars', 'venus'] as PlanetKey[]).map(pk => {
+            {(['mars', 'neptune', 'venus'] as PlanetKey[]).map(pk => {
               return (
                 <div
                   key={pk}
@@ -1396,14 +1506,14 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
                       />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-green-400 font-black text-3xl">{Math.ceil(3 - (handHoldProgress / 100) * 3)}</span>
+                      <span className="text-green-400 font-black text-3xl">{Math.ceil(2 - (handHoldProgress / 100) * 2)}</span>
                     </div>
                   </div>
                   <p className="text-green-300 text-lg font-bold animate-pulse">✋ Elinizi havada tutun…</p>
                 </div>
               ) : (
                 <div className="mb-4">
-                  <p className="text-white/50 text-base">✋ Elinizi 3 saniye havada tutarak başlayabilirsiniz</p>
+                  <p className="text-white/50 text-base">✋ Elinizi 2 saniye havada tutarak başlayabilirsiniz</p>
                 </div>
               )}
 
@@ -1430,9 +1540,6 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
               <div className={isHandDetected ? 'text-green-300' : 'text-red-400'}>
                 {isHandDetected ? `✋ ${gestureText}` : '○ El Bekleniyor'}
               </div>
-              {!HIGH_PERFORMANCE_MODE && (
-                <div className="text-yellow-500 text-[10px] mt-1">⚠️ Düşük Performans Modu</div>
-              )}
               <div className="flex gap-1 mt-1">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className={`w-2 h-2 rounded-full ${isHandDetected && i < 3 ? 'bg-blue-400' : 'bg-gray-600'}`} />
@@ -1448,8 +1555,7 @@ export const TheClawGame: React.FC<TheClawGameProps> = ({ onBack }) => {
               <div className="text-yellow-400 text-xs tracking-widest">İPUCU</div>
               <div className="text-yellow-200 text-sm">
                 👌 Parmakları birleştir = TUT<br />
-                ✋ Doğru Gezegene Götür<br />
-                <span className="text-yellow-400">🎨 Bırakmana Gerek Yok!</span>
+                ✋ Doğru Gezegene Götür
               </div>
             </div>
           </div>
